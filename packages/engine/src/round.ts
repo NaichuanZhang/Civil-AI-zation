@@ -11,6 +11,7 @@ import { getTurnOrder, resetEpForTurn } from './turn.js';
 import { executeAction } from './actions.js';
 import { buildSharedView, buildPersonalView, updateAgent } from './state.js';
 import { appendMemory, buildMemoryEntry, buildTargetMemoryEntry } from './memory.js';
+import { spawnChest } from './chest.js';
 
 export type ActionDecider = (
   agentId: AgentId,

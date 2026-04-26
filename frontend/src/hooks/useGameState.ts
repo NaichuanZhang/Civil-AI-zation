@@ -89,38 +89,22 @@ export function useGameState() {
       insforge.realtime.on('turn_started', (payload: Record<string, unknown>) => {
         const agentId = payload.agentId as string;
 
-        // Always log to agent-specific tab (addLog checks if agent is enabled)
+        // Just update state, don't log yet - will log when turn completes
         console.log('[turn_started] agentId:', agentId);
 
-        // Use setState callback to access current state (avoids stale closure)
-        setState((s) => {
-          // Get current agent state from the current state, not the captured closure
-          const currentAgent = s.agents.find(a => a.agentId === agentId);
-
-          // Log with current state data
-          if (currentAgent) {
-            addLogRef.current(
-              agentId as 'opus' | 'sonnet' | 'haiku',
-              'system',
-              `[R${s.round}] Pos: (${currentAgent.position.x},${currentAgent.position.y}) | Face: ${currentAgent.orientation} | HP: ${currentAgent.hp} | EP: ${currentAgent.ep} | Thinking...`,
-              { round: s.round, agentId, agentState: currentAgent }
-            );
-          }
-
-          return {
-            ...s,
-            currentTurnAgent: agentId,
-            eventLog: [
-              ...s.eventLog,
-              {
-                type: 'turn',
-                round: s.round,
-                agentId,
-                text: `${agentId} is thinking...`,
-              } as EventLogEntry,
-            ],
-          };
-        });
+        setState((s) => ({
+          ...s,
+          currentTurnAgent: agentId,
+          eventLog: [
+            ...s.eventLog,
+            {
+              type: 'turn',
+              round: s.round,
+              agentId,
+              text: `${agentId} is thinking...`,
+            } as EventLogEntry,
+          ],
+        }));
       });
 
       insforge.realtime.on('turn_completed', (payload: Record<string, unknown>) => {
@@ -136,59 +120,64 @@ export function useGameState() {
         // Always log to agent-specific tab (addLog checks if agent is enabled)
         console.log('[turn_completed] agentId:', agentId, 'reasoning:', reasoning ? 'present' : 'none');
 
-        // Use setState callback to get current round number
+        // Use setState callback to get current round number and agent state
         setState((s) => {
-          // Get final agent state after action (from incoming agents array)
+          // Get states before and after action
+          const prevAgentState = s.agents.find(a => a.agentId === agentId);
           const finalAgentState = agents.find(a => a.agentId === agentId);
           const pos = finalAgentState?.position;
           const orientation = finalAgentState?.orientation;
           const hp = finalAgentState?.hp ?? 0;
           const ep = finalAgentState?.ep ?? 0;
 
-          // Log reasoning/rationale with round number
-          if (reasoning) {
-            console.log('[turn_completed] Adding reasoning log');
-            addLogRef.current(
-              agentId as 'opus' | 'sonnet' | 'haiku',
-              'prompt',
-              `[R${s.round}] REASONING: ${reasoning}`,
-              { round: s.round, reasoning, action }
-            );
+          // Build comprehensive single log entry
+          const logParts: string[] = [];
+
+          // Start with state before action
+          if (prevAgentState) {
+            logParts.push(`[R${s.round}] STATE: Pos (${prevAgentState.position.x},${prevAgentState.position.y}) | Face: ${prevAgentState.orientation} | HP: ${prevAgentState.hp} | EP: ${prevAgentState.ep}`);
           }
 
-          // Log the action taken with round number
-          console.log('[turn_completed] Adding action log');
+          // Add reasoning
+          if (reasoning) {
+            logParts.push(`REASONING: ${reasoning}`);
+          }
+
+          // Add action
+          const actionStr = `ACTION: ${action?.type || 'unknown'}${action?.direction ? ' ' + action.direction : ''}${action?.target ? ' → ' + action.target : ''}`;
+          logParts.push(actionStr);
+
+          // Add result with final state
+          if (result) {
+            let resultStr = `RESULT: ${result.type}`;
+            if (result.type === 'move' && result.to) {
+              resultStr += ` → Pos (${result.to.x},${result.to.y}) | Face: ${orientation}`;
+            }
+            if (result.damage) {
+              resultStr += ` (${result.damage} damage)`;
+            }
+            if (result.targetEliminated) {
+              resultStr += ' [ELIMINATED]';
+            }
+            resultStr += ` | HP: ${hp} | EP: ${ep}`;
+            logParts.push(resultStr);
+          }
+
+          // Log as single consolidated entry
+          console.log('[turn_completed] Adding consolidated log');
           addLogRef.current(
             agentId as 'opus' | 'sonnet' | 'haiku',
             'action',
-            `[R${s.round}] ACTION: ${action?.type || 'unknown'}${action?.direction ? ' ' + action.direction : ''}${action?.target ? ' → ' + action.target : ''}`,
-            { round: s.round, action, result }
+            logParts.join('\n'),
+            {
+              round: s.round,
+              prevState: prevAgentState,
+              action,
+              result,
+              reasoning,
+              finalState: { position: pos, orientation, hp, ep }
+            }
           );
-
-          // Log the result with final position and round number
-          if (result) {
-            console.log('[turn_completed] Adding result log');
-
-            // Build detailed result message including final state
-            let resultMsg = `[R${s.round}] RESULT: ${result.type}`;
-            if (result.type === 'move' && result.to) {
-              resultMsg += ` → New Pos: (${result.to.x}, ${result.to.y}) | Face: ${orientation ?? '?'}`;
-            }
-            if (result.damage) {
-              resultMsg += ` (${result.damage} damage)`;
-            }
-            if (result.targetEliminated) {
-              resultMsg += ' [ELIMINATED]';
-            }
-            resultMsg += ` | HP: ${hp} | EP: ${ep}`;
-
-            addLogRef.current(
-              agentId as 'opus' | 'sonnet' | 'haiku',
-              'result',
-              resultMsg,
-              { round: s.round, result, finalPosition: pos, finalHp: hp, finalEp: ep }
-            );
-          }
 
           return {
             ...s,

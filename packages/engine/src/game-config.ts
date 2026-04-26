@@ -81,6 +81,17 @@ export const AGENT_INITIAL_HP = Object.fromEntries(
 ) as Record<keyof typeof AGENT_CONFIG_MAP, number>;
 
 /**
+ * Treasure Chest Configuration
+ * Controls chest spawning and item effects
+ */
+export const CHEST_CONFIG = {
+  enabled: true,                      // Enable/disable chest feature
+  spawnRounds: [5, 10, 15, 20, 25],  // Rounds when chests spawn
+  hpBoostAmount: 5,                  // HP gained from hp_boost item
+  hpDrainAmount: -5,                 // HP lost from hp_drain item
+} as const;
+
+/**
  * Default Game Configuration
  * Core game rules and map settings
  * Dynamically generates agent array from AGENT_CONFIG_MAP
@@ -102,6 +113,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     position: config.startPosition,
     orientation: config.startOrientation,
   })),
+  chests: CHEST_CONFIG,
 };
 
 /**

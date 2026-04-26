@@ -5,10 +5,12 @@ import type {
   ActionResult,
   Direction,
   GameConfig,
+  TreasureChest,
 } from './types.js';
 import { isInBounds, getAdjacentPosition, isPositionOccupied } from './grid.js';
 import { calculateDamage } from './combat.js';
 import { updateAgent } from './state.js';
+import { findChestAtPosition, openChest } from './chest.js';
 
 export interface ActionValidation {
   readonly valid: boolean;
@@ -87,28 +89,53 @@ export function executeAction(
   action: AgentAction,
   agents: readonly AgentState[],
   config: GameConfig,
-): { agents: readonly AgentState[]; result: ActionResult } {
+  chests: readonly TreasureChest[],
+): {
+  agents: readonly AgentState[];
+  chests: readonly TreasureChest[];
+  result: ActionResult;
+} {
   const agent = agents.find((a) => a.agentId === agentId)!;
 
   switch (action.type) {
     case 'move': {
       const validation = validateMove(agent, action.direction, agents, config);
       if (!validation.valid) {
-        return makeInvalidResult(agents, validation.reason!, config);
+        return makeInvalidResult(agents, chests, validation.reason!, config);
       }
       const dest = getAdjacentPosition(agent.position, action.direction);
-      const newAgents = updateAgent(agents, agentId, {
+      let newAgents = updateAgent(agents, agentId, {
         position: dest,
         orientation: action.direction,
         ep: agent.ep - 1,
       });
+
+      // Check for chest at destination
+      const chest = findChestAtPosition(chests, dest);
+      let newChests = chests;
+      let chestCollected: ActionResult['chestCollected'] = undefined;
+
+      if (chest) {
+        newChests = openChest(chests, dest);
+        const hpBefore = newAgents.find((a) => a.agentId === agentId)!.hp;
+        const newHp = Math.max(1, hpBefore + chest.item.hpChange); // HP cannot go below 1 from chest
+        newAgents = updateAgent(newAgents, agentId, { hp: newHp });
+        chestCollected = {
+          item: chest.item,
+          hpBefore,
+          hpAfter: newHp,
+        };
+      }
+
       return {
         agents: newAgents,
+        chests: newChests,
         result: {
           type: 'move',
           from: agent.position,
           to: dest,
           newOrientation: action.direction,
+          chestCollected,
         },
       };
     }
@@ -116,7 +143,7 @@ export function executeAction(
     case 'attack': {
       const validation = validateAttack(agent, action.target, agents);
       if (!validation.valid) {
-        return makeInvalidResult(agents, validation.reason!, config);
+        return makeInvalidResult(agents, chests, validation.reason!, config);
       }
       const target = agents.find((a) => a.agentId === action.target)!;
       const { damage, hitZone } = calculateDamage(
@@ -138,6 +165,7 @@ export function executeAction(
 
       return {
         agents: newAgents,
+        chests,
         result: {
           type: 'attack',
           target: action.target,
@@ -153,7 +181,7 @@ export function executeAction(
     case 'turn': {
       const validation = validateTurn(agent);
       if (!validation.valid) {
-        return makeInvalidResult(agents, validation.reason!, config);
+        return makeInvalidResult(agents, chests, validation.reason!, config);
       }
       const prev = agent.orientation;
       const newAgents = updateAgent(agents, agentId, {
@@ -162,6 +190,7 @@ export function executeAction(
       });
       return {
         agents: newAgents,
+        chests,
         result: {
           type: 'turn',
           previousOrientation: prev,
@@ -173,6 +202,7 @@ export function executeAction(
     case 'rest': {
       return {
         agents,
+        chests,
         result: {
           type: 'rest',
           epBonusNextTurn: config.restEpBonus,
@@ -184,11 +214,17 @@ export function executeAction(
 
 function makeInvalidResult(
   agents: readonly AgentState[],
+  chests: readonly TreasureChest[],
   reason: string,
   config: GameConfig,
-): { agents: readonly AgentState[]; result: ActionResult } {
+): {
+  agents: readonly AgentState[];
+  chests: readonly TreasureChest[];
+  result: ActionResult;
+} {
   return {
     agents,
+    chests,
     result: {
       type: 'invalid',
       reason,

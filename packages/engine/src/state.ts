@@ -33,6 +33,7 @@ export function createInitialState(config: GameConfig): GameState {
     roundSummaries: [],
     result: null,
     winnerAgentId: null,
+    chests: [],
   };
 }
 
@@ -66,6 +67,10 @@ export function buildSharedView(state: GameState): SharedGameView {
       ? state.roundSummaries[state.roundSummaries.length - 1]!.summary
       : null;
 
+  const unopenedChests = state.chests
+    .filter((c) => !c.opened)
+    .map((c) => ({ position: c.position }));
+
   return {
     round: state.round,
     mapWidth: state.config.mapWidth,
@@ -81,6 +86,7 @@ export function buildSharedView(state: GameState): SharedGameView {
       eliminatedAtRound: a.eliminatedAtRound!,
     })),
     previousRoundSummary: lastSummary,
+    chests: unopenedChests,
   };
 }
 

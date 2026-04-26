@@ -5,10 +5,22 @@ export type HitZone = 'front' | 'side' | 'back';
 export type GameStatus = 'pending' | 'running' | 'completed';
 export type GameResult = 'elimination' | 'highest_hp' | 'draw';
 export type ActionType = 'move' | 'attack' | 'rest' | 'turn' | 'invalid';
+export type ChestItemType = 'hp_boost' | 'hp_drain';
 
 export interface Position {
   readonly x: number;
   readonly y: number;
+}
+
+export interface ChestItem {
+  readonly type: ChestItemType;
+  readonly hpChange: number;
+}
+
+export interface TreasureChest {
+  readonly position: Position;
+  readonly item: ChestItem;
+  readonly opened: boolean;
 }
 
 export interface AgentConfig {
@@ -66,6 +78,11 @@ export interface MoveResult {
   readonly from: Position;
   readonly to: Position;
   readonly newOrientation: Direction;
+  readonly chestCollected?: {
+    readonly item: ChestItem;
+    readonly hpBefore: number;
+    readonly hpAfter: number;
+  };
 }
 
 export interface AttackResult {
@@ -104,6 +121,13 @@ export interface TurnRecord {
   readonly result: ActionResult;
 }
 
+export interface ChestConfig {
+  readonly enabled: boolean;
+  readonly spawnRounds: readonly number[];
+  readonly hpBoostAmount: number;
+  readonly hpDrainAmount: number;
+}
+
 export interface GameConfig {
   readonly mapWidth: number;
   readonly mapHeight: number;
@@ -114,6 +138,7 @@ export interface GameConfig {
   readonly energyPoints: number;
   readonly maxEp: number;
   readonly agents: readonly AgentConfig[];
+  readonly chests: ChestConfig;
 }
 
 export interface GameState {
@@ -125,12 +150,17 @@ export interface GameState {
   readonly roundSummaries: readonly RoundSummary[];
   readonly result: GameResult | null;
   readonly winnerAgentId: AgentId | null;
+  readonly chests: readonly TreasureChest[];
 }
 
 export interface RoundSummary {
   readonly roundNumber: number;
   readonly summary: string;
   readonly stateSnapshot: SharedGameView;
+}
+
+export interface PublicChestView {
+  readonly position: Position;
 }
 
 export interface SharedGameView {
@@ -140,6 +170,7 @@ export interface SharedGameView {
   readonly agents: readonly PublicAgentView[];
   readonly eliminatedAgents: readonly EliminatedAgentView[];
   readonly previousRoundSummary: string | null;
+  readonly chests: readonly PublicChestView[];
 }
 
 export interface PublicAgentView {
