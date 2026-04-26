@@ -30,7 +30,7 @@ export function App() {
           maxWidth: UI_CONFIG.maxWidth,
           margin: '0 auto',
           padding: 24,
-          fontFamily: 'system-ui, -apple-system, sans-serif',
+          fontFamily: "'Patrick Hand', cursive, system-ui, sans-serif",
           backgroundColor: THEME.background.primary,
           minHeight: '100vh',
           color: THEME.text.secondary,
