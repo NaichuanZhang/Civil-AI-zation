@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 
 type LogType = 'system' | 'opus' | 'sonnet' | 'haiku';
 
@@ -25,7 +25,30 @@ const LogContext = createContext<LogContextValue | null>(null);
 export function LogProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [recordMode, setRecordMode] = useState(false);
-  const [enabledAgents, setEnabledAgents] = useState<Set<LogType>>(new Set(['system']));
+
+  // Load enabled agents from localStorage
+  const [enabledAgents, setEnabledAgents] = useState<Set<LogType>>(() => {
+    try {
+      const stored = window.localStorage.getItem('civil-ai-zation:enabledAgents');
+      if (stored) {
+        const array = JSON.parse(stored) as LogType[];
+        return new Set(array);
+      }
+    } catch (error) {
+      console.warn('Failed to load enabled agents from localStorage:', error);
+    }
+    return new Set(['system']);
+  });
+
+  // Persist enabled agents to localStorage
+  useEffect(() => {
+    try {
+      const array = Array.from(enabledAgents);
+      window.localStorage.setItem('civil-ai-zation:enabledAgents', JSON.stringify(array));
+    } catch (error) {
+      console.warn('Failed to save enabled agents to localStorage:', error);
+    }
+  }, [enabledAgents]);
 
   const addLog = useCallback((
     type: LogType,

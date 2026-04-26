@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { useGameState } from './hooks/useGameState';
+import { usePersistedState } from './hooks/usePersistedState';
 import { Grid } from './components/Grid';
 import { AgentPanel } from './components/AgentPanel';
 import { LogViewer } from './components/LogViewer';
@@ -12,7 +12,7 @@ const AGENT_IDS = Object.keys(AGENT_STATS) as Array<keyof typeof AGENT_STATS>;
 
 export function App() {
   const { state, startGame } = useGameState();
-  const [debugMode, setDebugMode] = useState(false);
+  const [debugMode, setDebugMode] = usePersistedState('civil-ai-zation:debugMode', false);
 
   return (
     <div
