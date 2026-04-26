@@ -296,7 +296,7 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
                 </span>
               </div>
               <div style={{ color: '#e2e8f0', whiteSpace: 'pre-wrap' }}>{log.message}</div>
-              {log.data && (
+              {log.data != null ? (
                 <details style={{ marginTop: 4 }}>
                   <summary
                     style={{
@@ -323,7 +323,7 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
                     }}
                   />
                 </details>
-              )}
+              ) : null}
             </div>
           );
         })}
