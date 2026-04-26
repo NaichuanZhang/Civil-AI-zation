@@ -304,7 +304,8 @@ async function runGameLoop(
 
         const toolCall = message?.tool_calls?.[0];
         if (toolCall) {
-          action = parseToolCall(toolCall);
+          const parsedActions = parseToolCall(toolCall);
+          action = parsedActions[0] || { type: 'rest' };
         } else {
           action = { type: 'rest' };
         }
@@ -313,13 +314,14 @@ async function runGameLoop(
         action = { type: 'rest' };
       }
 
-      const { agents: updatedAgents, result } = executeAction(
+      const { agents: updatedAgents, chests: updatedChests, result } = executeAction(
         turnAgent.agentId,
         action,
         state.agents,
         config,
+        state.chests,
       );
-      state = { ...state, agents: updatedAgents };
+      state = { ...state, agents: updatedAgents, chests: updatedChests };
 
       if (result.type === 'attack' && result.targetEliminated) {
         state = {

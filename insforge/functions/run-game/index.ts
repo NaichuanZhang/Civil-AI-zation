@@ -53,6 +53,16 @@ var AGENT_CONFIG_MAP = {
 var AGENT_INITIAL_HP = Object.fromEntries(
   Object.entries(AGENT_CONFIG_MAP).map(([id, config]) => [id, config.hp])
 );
+var CHEST_CONFIG = {
+  enabled: true,
+  // Enable/disable chest feature
+  spawnRounds: [5, 10, 15, 20, 25, 30],
+  // Chests spawn every 5 rounds
+  hpBoostAmount: 5,
+  // HP gained from hp_boost item
+  hpDrainAmount: -5
+  // HP lost from hp_drain item
+};
 var DEFAULT_GAME_CONFIG = {
   mapWidth: 3,
   mapHeight: 3,
@@ -69,7 +79,8 @@ var DEFAULT_GAME_CONFIG = {
     hp: config.hp,
     position: config.startPosition,
     orientation: config.startOrientation
-  }))
+  })),
+  chests: CHEST_CONFIG
 };
 
 // packages/engine/src/grid.ts
@@ -165,7 +176,8 @@ function createInitialState(config) {
     turnRecords: [],
     roundSummaries: [],
     result: null,
-    winnerAgentId: null
+    winnerAgentId: null,
+    chests: []
   };
 }
 function updateAgent(agents, agentId, updates) {
@@ -177,6 +189,7 @@ function buildSharedView(state) {
   const alive = state.agents.filter((a) => a.status === "alive");
   const eliminated = state.agents.filter((a) => a.status === "eliminated");
   const lastSummary = state.roundSummaries.length > 0 ? state.roundSummaries[state.roundSummaries.length - 1].summary : null;
+  const unopenedChests = state.chests.filter((c) => !c.opened).map((c) => ({ position: c.position }));
   return {
     round: state.round,
     mapWidth: state.config.mapWidth,
@@ -191,7 +204,8 @@ function buildSharedView(state) {
       agentId: a.agentId,
       eliminatedAtRound: a.eliminatedAtRound
     })),
-    previousRoundSummary: lastSummary
+    previousRoundSummary: lastSummary,
+    chests: unopenedChests
   };
 }
 function buildPersonalView(state, agentId) {
@@ -228,8 +242,14 @@ var DIRECTION_NAMES = {
 };
 function buildMemoryEntry(round, _agentId, result, _agents) {
   switch (result.type) {
-    case "move":
-      return `Round ${round}: I moved ${DIRECTION_NAMES[result.newOrientation]} to (${result.to.x},${result.to.y}), facing ${DIRECTION_NAMES[result.newOrientation]}.`;
+    case "move": {
+      let entry = `Round ${round}: I moved ${DIRECTION_NAMES[result.newOrientation]} to (${result.to.x},${result.to.y}), facing ${DIRECTION_NAMES[result.newOrientation]}.`;
+      if (result.chestCollected) {
+        const itemDesc = result.chestCollected.item.type === "hp_boost" ? "HP boost" : "HP drain";
+        entry += ` Opened chest! Got ${itemDesc}: HP ${result.chestCollected.hpBefore}\u2192${result.chestCollected.hpAfter}.`;
+      }
+      return entry;
+    }
     case "attack": {
       let entry = `Round ${round}: I attacked ${result.target} from the ${result.hitZone} for ${result.damage} damage. ${result.target} HP: ${result.targetHpBefore}\u2192${result.targetHpAfter}.`;
       if (result.targetEliminated) {
@@ -244,6 +264,18 @@ function buildMemoryEntry(round, _agentId, result, _agents) {
     case "invalid":
       return `Round ${round}: Invalid action (${result.reason}). Rested instead. +${result.fallbackAction.epBonusNextTurn} EP next turn.`;
   }
+}
+
+// packages/engine/src/chest.ts
+function findChestAtPosition(chests, position) {
+  return chests.find(
+    (c) => !c.opened && c.position.x === position.x && c.position.y === position.y
+  );
+}
+function openChest(chests, position) {
+  return chests.map(
+    (c) => c.position.x === position.x && c.position.y === position.y ? { ...c, opened: true } : c
+  );
 }
 
 // packages/engine/src/actions.ts
@@ -295,34 +327,50 @@ function validateTurn(agent) {
   }
   return { valid: true };
 }
-function executeAction(agentId, action, agents, config) {
+function executeAction(agentId, action, agents, config, chests) {
   const agent = agents.find((a) => a.agentId === agentId);
   switch (action.type) {
     case "move": {
       const validation = validateMove(agent, action.direction, agents, config);
       if (!validation.valid) {
-        return makeInvalidResult(agents, validation.reason, config);
+        return makeInvalidResult(agents, chests, validation.reason, config);
       }
       const dest = getAdjacentPosition(agent.position, action.direction);
-      const newAgents = updateAgent(agents, agentId, {
+      let newAgents = updateAgent(agents, agentId, {
         position: dest,
         orientation: action.direction,
         ep: agent.ep - 1
       });
+      const chest = findChestAtPosition(chests, dest);
+      let newChests = chests;
+      let chestCollected = void 0;
+      if (chest) {
+        newChests = openChest(chests, dest);
+        const hpBefore = newAgents.find((a) => a.agentId === agentId).hp;
+        const newHp = Math.max(1, hpBefore + chest.item.hpChange);
+        newAgents = updateAgent(newAgents, agentId, { hp: newHp });
+        chestCollected = {
+          item: chest.item,
+          hpBefore,
+          hpAfter: newHp
+        };
+      }
       return {
         agents: newAgents,
+        chests: newChests,
         result: {
           type: "move",
           from: agent.position,
           to: dest,
-          newOrientation: action.direction
+          newOrientation: action.direction,
+          chestCollected
         }
       };
     }
     case "attack": {
       const validation = validateAttack(agent, action.target, agents);
       if (!validation.valid) {
-        return makeInvalidResult(agents, validation.reason, config);
+        return makeInvalidResult(agents, chests, validation.reason, config);
       }
       const target = agents.find((a) => a.agentId === action.target);
       const { damage, hitZone } = calculateDamage(
@@ -340,6 +388,7 @@ function executeAction(agentId, action, agents, config) {
       });
       return {
         agents: newAgents,
+        chests,
         result: {
           type: "attack",
           target: action.target,
@@ -354,7 +403,7 @@ function executeAction(agentId, action, agents, config) {
     case "turn": {
       const validation = validateTurn(agent);
       if (!validation.valid) {
-        return makeInvalidResult(agents, validation.reason, config);
+        return makeInvalidResult(agents, chests, validation.reason, config);
       }
       const prev = agent.orientation;
       const newAgents = updateAgent(agents, agentId, {
@@ -363,6 +412,7 @@ function executeAction(agentId, action, agents, config) {
       });
       return {
         agents: newAgents,
+        chests,
         result: {
           type: "turn",
           previousOrientation: prev,
@@ -373,6 +423,7 @@ function executeAction(agentId, action, agents, config) {
     case "rest": {
       return {
         agents,
+        chests,
         result: {
           type: "rest",
           epBonusNextTurn: config.restEpBonus
@@ -381,9 +432,10 @@ function executeAction(agentId, action, agents, config) {
     }
   }
 }
-function makeInvalidResult(agents, reason, config) {
+function makeInvalidResult(agents, chests, reason, config) {
   return {
     agents,
+    chests,
     result: {
       type: "invalid",
       reason,
@@ -501,6 +553,26 @@ Example: You are at (2,1), opponent at (0,1)
    - Energy accumulates up to 3 EP maximum
    - Use when you need to build up energy for multi-action turns
 
+=== TREASURE CHESTS (NEW!) ===
+Treasure chests (marked as 'C' on the board) appear randomly on the map at certain rounds.
+
+WHAT YOU KNOW:
+- Chest locations are visible to all agents (you'll see them in CHESTS section)
+- Chests are automatically opened when you move onto their cell
+- The game does NOT reveal what's inside until opened
+
+WHAT'S INSIDE:
+- Each chest contains ONE item that affects your HP
+- Items have varying effects - some may help you, others may harm you
+- Exact effects can change between games (not fixed)
+- Taking the risk might give you an advantage, or it might backfire
+
+STRATEGY:
+- Chests can be a gamble - weigh risk vs reward
+- Observe opponent behavior - do they seek chests or avoid them?
+- Use chests as bait or tactical positioning opportunities
+- Remember: you must MOVE onto the chest cell to open it (cannot open from adjacent cell)
+
 === SURROUNDING INFO (CRITICAL FOR SPATIAL UNDERSTANDING) ===
 In YOUR STATUS, you will see SURROUNDING with 4 directions:
 SURROUNDING: { up: "...", down: "...", left: "...", right: "..." }
@@ -568,10 +640,10 @@ CRITICAL:
 YOUR IDENTITY:
 ${AGENT_PERSONALITIES[agentId]}
 
-Choose one action to perform this turn. With your available EP, you can take multiple actions in future turns until you either choose to rest or your energy is exhausted. Consider: Can I backstab (7 dmg)? Am I vulnerable (facing wrong way)? Should I save energy or spend it now?`;
+Choose your actions for this turn. You can perform MULTIPLE actions in sequence until you run out of EP or choose to rest. Plan your sequence carefully based on available EP. Consider: Can I move then attack? Should I reposition first? Am I vulnerable?`;
 }
 function buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections) {
-  const grid = buildGridVisual(aliveAgents, sharedView.mapWidth, sharedView.mapHeight);
+  const grid = buildGridVisual(aliveAgents, sharedView.chests, sharedView.mapWidth, sharedView.mapHeight);
   const agentLines = sharedView.agents.map((a) => {
     const youTag = a.agentId === personalView.agentId ? " [YOU]" : "";
     let relativePos = "";
@@ -589,6 +661,7 @@ function buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirect
   const surroundingInfo = buildSurroundingInfo(personalView, aliveAgents, sharedView.mapWidth, sharedView.mapHeight);
   const memoryLines = personalView.memory.length > 0 ? personalView.memory.join("\n") : "No memories yet.";
   const summaryText = sharedView.previousRoundSummary ?? "First round - no previous summary.";
+  const chestsText = sharedView.chests.length > 0 ? sharedView.chests.map((c) => `- Chest at (${c.position.x},${c.position.y}) - Contents unknown`).join("\n") : "None currently on the map.";
   return `=== ROUND ${sharedView.round} ===
 
 \u2501\u2501\u2501 \u{1F50D} YOUR IMMEDIATE SURROUNDINGS (ONLY USE THIS FOR SPATIAL DECISIONS) \u2501\u2501\u2501
@@ -614,6 +687,9 @@ ${agentLines}
 ELIMINATED AGENTS:
 ${eliminatedLines}
 
+TREASURE CHESTS:
+${chestsText}
+
 YOUR STATUS:
 - HP: ${personalView.hp}, EP: ${personalView.ep}, Position: (${personalView.position.x},${personalView.position.y}), Facing: ${DIRECTION_NAMES2[personalView.orientation]}
 
@@ -630,117 +706,112 @@ ${summaryText}
 Choose your action.`;
 }
 function buildToolDefinitions(aliveOpponents, validMoveDirections) {
-  const tools = [];
-  if (validMoveDirections.length > 0) {
-    tools.push({
-      type: "function",
-      function: {
-        name: "move",
-        description: "Move 1 cell in a cardinal direction. Costs 1 EP. Sets your facing to that direction. Cannot move outside map bounds or onto a cell occupied by another agent. Only the listed directions are valid this turn.",
-        parameters: {
-          type: "object",
-          properties: {
-            direction: {
+  return [{
+    type: "function",
+    function: {
+      name: "choose_actions",
+      description: `Choose one or more actions to perform this turn in sequence. Actions execute in the order provided. Each action costs EP (move=1, turn=1, attack=1, rest=0). You can keep acting until EP runs out or you choose to rest. Moving automatically changes your facing for FREE (no need to turn separately unless you want different facing after move).
+
+Examples:
+- With 1 EP: ["move:left"] or ["turn:up"] or ["rest"]
+- With 2 EP: ["move:left", "attack:opus"] or ["turn:up", "attack:haiku"]
+- With 3 EP: ["move:up", "move:left", "attack:sonnet"]
+
+Rules:
+- Cannot repeat same action type (no double move, double turn, etc.)
+- Attack must be last action (after move/turn positioning)
+- Rest stops sequence immediately (cannot act after rest)
+- Invalid actions are skipped and you rest instead`,
+      parameters: {
+        type: "object",
+        properties: {
+          actions: {
+            type: "array",
+            items: {
               type: "string",
-              enum: [...validMoveDirections],
-              description: "Direction to move"
-            }
-          },
-          required: ["direction"]
-        }
-      }
-    });
-  }
-  if (aliveOpponents.length > 0) {
-    tools.push({
-      type: "function",
-      function: {
-        name: "attack",
-        description: "Attack an adjacent agent in your facing direction. Costs 1 EP. The target must be directly in the cell you are facing \u2014 you cannot attack diagonally, at range, or behind you. Use turn(direction) to change facing first if needed. Damage depends on how you hit relative to the target's facing: front=2, side=5, back=7.",
-        parameters: {
-          type: "object",
-          properties: {
-            target: {
-              type: "string",
-              enum: [...aliveOpponents],
-              description: "ID of the agent to attack"
-            }
-          },
-          required: ["target"]
-        }
-      }
-    });
-  }
-  tools.push(
-    {
-      type: "function",
-      function: {
-        name: "turn",
-        description: "Change your facing direction without moving. Costs 1 EP. Does not change your position. Use this to face a target before attacking, or to reorient defensively.",
-        parameters: {
-          type: "object",
-          properties: {
-            direction: {
-              type: "string",
-              enum: ["up", "down", "left", "right"],
-              description: "Direction to face"
-            }
-          },
-          required: ["direction"]
-        }
-      }
-    },
-    {
-      type: "function",
-      function: {
-        name: "rest",
-        description: "Skip your action this turn. Costs 0 EP. You will gain +1 bonus EP next turn (giving you 2 EP total).",
-        parameters: {
-          type: "object",
-          properties: {},
-          required: []
-        }
+              enum: [
+                ...validMoveDirections.map((d) => `move:${d}`),
+                ...aliveOpponents.length > 0 ? aliveOpponents.map((t) => `attack:${t}`) : [],
+                "turn:up",
+                "turn:down",
+                "turn:left",
+                "turn:right",
+                "rest"
+              ]
+            },
+            description: 'Sequence of actions to perform. Format: "action:param" or "rest". Example: ["move:left", "attack:opus"]'
+          }
+        },
+        required: ["actions"]
       }
     }
-  );
-  return tools;
+  }];
 }
 function parseToolCall(toolCall) {
   try {
     const name = toolCall.function.name;
     const args = JSON.parse(toolCall.function.arguments);
+    if (name === "choose_actions") {
+      const actions = args["actions"];
+      if (!Array.isArray(actions)) {
+        return [{ type: "rest" }];
+      }
+      const parsedActions = [];
+      for (const actionStr of actions) {
+        if (typeof actionStr !== "string") continue;
+        if (actionStr === "rest") {
+          parsedActions.push({ type: "rest" });
+          break;
+        }
+        const [actionType, param] = actionStr.split(":");
+        if (actionType === "move") {
+          if (param === "up" || param === "down" || param === "left" || param === "right") {
+            parsedActions.push({ type: "move", direction: param });
+          }
+        } else if (actionType === "attack") {
+          if (param && param in AGENT_PERSONALITIES) {
+            parsedActions.push({ type: "attack", target: param });
+          }
+        } else if (actionType === "turn") {
+          if (param === "up" || param === "down" || param === "left" || param === "right") {
+            parsedActions.push({ type: "turn", direction: param });
+          }
+        }
+      }
+      return parsedActions.length > 0 ? parsedActions : [{ type: "rest" }];
+    }
     switch (name) {
       case "move": {
         const dir = args["direction"];
         if (dir === "up" || dir === "down" || dir === "left" || dir === "right") {
-          return { type: "move", direction: dir };
+          return [{ type: "move", direction: dir }];
         }
-        return { type: "rest" };
+        return [{ type: "rest" }];
       }
       case "attack": {
         const target = args["target"];
         if (target && typeof target === "string" && target in AGENT_PERSONALITIES) {
-          return { type: "attack", target };
+          return [{ type: "attack", target }];
         }
-        return { type: "rest" };
+        return [{ type: "rest" }];
       }
       case "turn": {
         const turnDir = args["direction"];
         if (turnDir === "up" || turnDir === "down" || turnDir === "left" || turnDir === "right") {
-          return { type: "turn", direction: turnDir };
+          return [{ type: "turn", direction: turnDir }];
         }
-        return { type: "rest" };
+        return [{ type: "rest" }];
       }
       case "rest":
-        return { type: "rest" };
+        return [{ type: "rest" }];
       default:
-        return { type: "rest" };
+        return [{ type: "rest" }];
     }
   } catch {
-    return { type: "rest" };
+    return [{ type: "rest" }];
   }
 }
-function buildGridVisual(agents, width, height) {
+function buildGridVisual(agents, chests, width, height) {
   const dirArrow = {
     up: "\u2191",
     down: "\u2193",
@@ -758,7 +829,12 @@ function buildGridVisual(agents, width, height) {
       if (agent) {
         row += agent.agentId[0].toUpperCase() + dirArrow[agent.orientation];
       } else {
-        row += ". ";
+        const chest = chests.find((c) => c.position.x === x && c.position.y === y);
+        if (chest) {
+          row += "C ";
+        } else {
+          row += ". ";
+        }
       }
     }
     lines.push(row.trimEnd());
@@ -1069,7 +1145,8 @@ async function runGameLoop(client, gameId, initialState, config) {
         reasoning = message?.content || message?.reasoning_content || "";
         const toolCall = message?.tool_calls?.[0];
         if (toolCall) {
-          action = parseToolCall(toolCall);
+          const parsedActions = parseToolCall(toolCall);
+          action = parsedActions[0] || { type: "rest" };
         } else {
           action = { type: "rest" };
         }
@@ -1077,13 +1154,14 @@ async function runGameLoop(client, gameId, initialState, config) {
         console.error(`LLM call failed for ${turnAgent.agentId}:`, err);
         action = { type: "rest" };
       }
-      const { agents: updatedAgents, result } = executeAction(
+      const { agents: updatedAgents, chests: updatedChests, result } = executeAction(
         turnAgent.agentId,
         action,
         state.agents,
-        config
+        config,
+        state.chests
       );
-      state = { ...state, agents: updatedAgents };
+      state = { ...state, agents: updatedAgents, chests: updatedChests };
       if (result.type === "attack" && result.targetEliminated) {
         state = {
           ...state,
