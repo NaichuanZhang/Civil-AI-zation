@@ -151,6 +151,8 @@ CRITICAL:
 YOUR IDENTITY:
 ${AGENT_PERSONALITIES[agentId]}
 
+IMPORTANT: Before calling the tool, briefly share your reasoning in the message content (max 50 words). Then call choose_actions with your action sequence.
+
 Choose your actions for this turn. You can perform MULTIPLE actions in sequence until you run out of EP or choose to rest. Plan your sequence carefully based on available EP. Consider: Can I move then attack? Should I reposition first? Am I vulnerable?`;
 }
 

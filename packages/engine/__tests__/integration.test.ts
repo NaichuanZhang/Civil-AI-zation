@@ -333,86 +333,111 @@ describe('Integration: Agent prompt building', () => {
     expect(message).toContain('None — you are boxed in');
   });
 
-  it('builds tool definitions with alive opponents', () => {
+  it('builds single choose_actions tool with alive opponents', () => {
     const tools = buildToolDefinitions(['sonnet', 'haiku'], ['up', 'down', 'right', 'left']);
-    expect(tools).toHaveLength(4);
-    const attack = tools.find((t) => t.function.name === 'attack')!;
-    expect(attack.function.description).toContain('facing');
-    expect(tools.find((t) => t.function.name === 'turn')).toBeDefined();
+    expect(tools).toHaveLength(1);
+    expect(tools[0]!.function.name).toBe('choose_actions');
+
+    const params = tools[0]!.function.parameters as {
+      properties: { actions: { items: { enum: string[] } } };
+    };
+    const enumValues = params.properties.actions.items.enum;
+    expect(enumValues).toContain('attack:sonnet');
+    expect(enumValues).toContain('attack:haiku');
+    expect(enumValues).toContain('move:up');
+    expect(enumValues).toContain('turn:up');
+    expect(enumValues).toContain('rest');
   });
 
-  it('omits attack tool when no opponents', () => {
+  it('omits attack enums when no opponents', () => {
     const tools = buildToolDefinitions([], ['up', 'down', 'right', 'left']);
-    expect(tools).toHaveLength(3);
-    expect(tools.find((t) => t.function.name === 'attack')).toBeUndefined();
+    expect(tools).toHaveLength(1);
+    const params = tools[0]!.function.parameters as {
+      properties: { actions: { items: { enum: string[] } } };
+    };
+    const enumValues = params.properties.actions.items.enum;
+    expect(enumValues.some((v: string) => v.startsWith('attack:'))).toBe(false);
+    expect(enumValues).toContain('move:up');
   });
 
-  it('omits move tool when no valid directions', () => {
+  it('omits move enums when no valid directions', () => {
     const tools = buildToolDefinitions(['sonnet', 'haiku'], []);
-    expect(tools.find((t) => t.function.name === 'move')).toBeUndefined();
-    expect(tools.find((t) => t.function.name === 'attack')).toBeDefined();
-    expect(tools.find((t) => t.function.name === 'turn')).toBeDefined();
-    expect(tools.find((t) => t.function.name === 'rest')).toBeDefined();
+    expect(tools).toHaveLength(1);
+    const params = tools[0]!.function.parameters as {
+      properties: { actions: { items: { enum: string[] } } };
+    };
+    const enumValues = params.properties.actions.items.enum;
+    expect(enumValues.some((v: string) => v.startsWith('move:'))).toBe(false);
+    expect(enumValues).toContain('attack:sonnet');
+    expect(enumValues).toContain('turn:up');
+    expect(enumValues).toContain('rest');
   });
 
-  it('restricts move enum to only valid directions', () => {
+  it('restricts move enums to only valid directions', () => {
     const tools = buildToolDefinitions(['sonnet'], ['up', 'right']);
-    const moveTool = tools.find((t) => t.function.name === 'move')!;
-    const params = moveTool.function.parameters as { properties: { direction: { enum: string[] } } };
-    expect(params.properties.direction.enum).toEqual(['up', 'right']);
+    const params = tools[0]!.function.parameters as {
+      properties: { actions: { items: { enum: string[] } } };
+    };
+    const enumValues = params.properties.actions.items.enum;
+    const moveEnums = enumValues.filter((v: string) => v.startsWith('move:'));
+    expect(moveEnums).toEqual(['move:up', 'move:right']);
   });
 
-  it('omits both move and attack when no directions and no opponents', () => {
+  it('omits both move and attack enums when no directions and no opponents', () => {
     const tools = buildToolDefinitions([], []);
-    expect(tools).toHaveLength(2);
-    expect(tools.find((t) => t.function.name === 'move')).toBeUndefined();
-    expect(tools.find((t) => t.function.name === 'attack')).toBeUndefined();
-    expect(tools.find((t) => t.function.name === 'turn')).toBeDefined();
-    expect(tools.find((t) => t.function.name === 'rest')).toBeDefined();
+    expect(tools).toHaveLength(1);
+    const params = tools[0]!.function.parameters as {
+      properties: { actions: { items: { enum: string[] } } };
+    };
+    const enumValues = params.properties.actions.items.enum;
+    expect(enumValues.some((v: string) => v.startsWith('move:'))).toBe(false);
+    expect(enumValues.some((v: string) => v.startsWith('attack:'))).toBe(false);
+    expect(enumValues).toContain('turn:up');
+    expect(enumValues).toContain('rest');
   });
 });
 
 describe('Integration: parseToolCall', () => {
-  it('parses move action', () => {
-    const action = parseToolCall({
+  it('parses move action (legacy single-tool format)', () => {
+    const actions = parseToolCall({
       function: { name: 'move', arguments: '{"direction":"up"}' },
     });
-    expect(action).toEqual({ type: 'move', direction: 'up' });
+    expect(actions).toEqual([{ type: 'move', direction: 'up' }]);
   });
 
-  it('parses attack action', () => {
-    const action = parseToolCall({
+  it('parses attack action (legacy single-tool format)', () => {
+    const actions = parseToolCall({
       function: { name: 'attack', arguments: '{"target":"sonnet"}' },
     });
-    expect(action).toEqual({ type: 'attack', target: 'sonnet' });
+    expect(actions).toEqual([{ type: 'attack', target: 'sonnet' }]);
   });
 
-  it('parses turn action', () => {
-    const action = parseToolCall({
+  it('parses turn action (legacy single-tool format)', () => {
+    const actions = parseToolCall({
       function: { name: 'turn', arguments: '{"direction":"down"}' },
     });
-    expect(action).toEqual({ type: 'turn', direction: 'down' });
+    expect(actions).toEqual([{ type: 'turn', direction: 'down' }]);
   });
 
-  it('parses rest action', () => {
-    const action = parseToolCall({
+  it('parses rest action (legacy single-tool format)', () => {
+    const actions = parseToolCall({
       function: { name: 'rest', arguments: '{}' },
     });
-    expect(action).toEqual({ type: 'rest' });
+    expect(actions).toEqual([{ type: 'rest' }]);
   });
 
-  it('returns rest for unknown function name', () => {
-    const action = parseToolCall({
+  it('returns rest array for unknown function name', () => {
+    const actions = parseToolCall({
       function: { name: 'unknown', arguments: '{}' },
     });
-    expect(action).toEqual({ type: 'rest' });
+    expect(actions).toEqual([{ type: 'rest' }]);
   });
 
-  it('returns rest for invalid JSON', () => {
-    const action = parseToolCall({
+  it('returns rest array for invalid JSON', () => {
+    const actions = parseToolCall({
       function: { name: 'move', arguments: 'not json' },
     });
-    expect(action).toEqual({ type: 'rest' });
+    expect(actions).toEqual([{ type: 'rest' }]);
   });
 });
 
