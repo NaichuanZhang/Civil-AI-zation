@@ -1,5 +1,5 @@
 import type { AgentUIState } from '../types';
-import { AGENT_COLORS, AGENT_MODELS, THEME } from '../config';
+import { AGENT_COLORS, AGENT_NAMES, AGENT_MODELS, THEME } from '../config';
 
 function formatAction(action: { type: string; direction?: string; target?: string }): string {
   switch (action.type) {
@@ -51,7 +51,7 @@ export function AgentPanel({ agent, isCurrentTurn, maxHp, debugMode = false }: A
           }}
         />
         <span style={{ fontWeight: 'bold', color: '#f1f5f9', fontSize: 14 }}>
-          {agent.agentId.toUpperCase()}
+          {AGENT_NAMES[agent.agentId] ?? agent.agentId.toUpperCase()}
         </span>
         {isCurrentTurn && (
           <span style={{ fontSize: 10, color: '#fbbf24', marginLeft: 'auto' }}>ACTING</span>

@@ -1,4 +1,5 @@
 import { Pause, Play } from 'lucide-react';
+import { AGENT_NAMES } from '../config';
 
 interface GameControlsProps {
   status: string;
@@ -128,7 +129,7 @@ export function GameControls({ status, round, result, isPaused, onStartGame, onT
           }}
         >
           {result.winner
-            ? `${result.winner.toUpperCase()} wins! (${result.type})`
+            ? `${AGENT_NAMES[result.winner] ?? result.winner.toUpperCase()} wins! (${result.type})`
             : `Draw! (${result.type})`}
         </div>
       )}

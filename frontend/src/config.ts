@@ -35,10 +35,16 @@ export const AGENT_COLORS: Record<string, string> = {
   haiku: '#22c55e',   // Green
 } as const;
 
-export const AGENT_MODELS: Record<string, string> = {
-  opus: 'GLM-5.1',
+export const AGENT_NAMES: Record<string, string> = {
+  opus: 'GLM-5 Turbo',
   sonnet: 'GPT-4o Mini',
-  haiku: 'GPT-4o Mini',
+  haiku: 'Claude Haiku',
+} as const;
+
+export const AGENT_MODELS: Record<string, string> = {
+  opus: 'GLM-5 Turbo',
+  sonnet: 'GPT-4o Mini',
+  haiku: 'Claude Haiku 4.5',
 } as const;
 
 /**

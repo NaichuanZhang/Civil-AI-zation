@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Bug, Circle, Play, Pause, SkipForward } from 'lucide-react';
 import { useLog } from '../contexts/LogContext';
+import { AGENT_NAMES } from '../config';
 
 type LogType = 'system' | 'opus' | 'sonnet' | 'haiku';
 
@@ -25,9 +26,9 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
   const tabs: Array<{ id: LogType; label: string }> = debugMode
     ? [
         { id: 'system', label: 'System' },
-        { id: 'opus', label: 'Opus' },
-        { id: 'sonnet', label: 'Sonnet' },
-        { id: 'haiku', label: 'Haiku' },
+        { id: 'opus', label: AGENT_NAMES['opus'] ?? 'Opus' },
+        { id: 'sonnet', label: AGENT_NAMES['sonnet'] ?? 'Sonnet' },
+        { id: 'haiku', label: AGENT_NAMES['haiku'] ?? 'Haiku' },
       ]
     : [{ id: 'system', label: 'System' }];
 

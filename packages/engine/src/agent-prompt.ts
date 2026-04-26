@@ -281,6 +281,10 @@ Rules:
       parameters: {
         type: 'object',
         properties: {
+          reasoning: {
+            type: 'string',
+            description: 'Your strategic thinking and reasoning about the current situation before choosing actions. Analyze threats, opportunities, and explain your plan.',
+          },
           actions: {
             type: 'array',
             items: {
@@ -298,7 +302,7 @@ Rules:
             description: 'Sequence of actions to perform. Format: "action:param" or "rest". Example: ["move:left", "attack:opus"]',
           },
         },
-        required: ['actions'],
+        required: ['reasoning', 'actions'],
       },
     },
   }];

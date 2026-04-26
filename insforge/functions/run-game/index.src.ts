@@ -65,7 +65,7 @@ async function callLlm(
     model: string;
     messages: Array<{ role: string; content: string }>;
     tools?: readonly ToolDefinition[];
-    tool_choice?: string;
+    toolChoice?: string;
     temperature?: number;
     maxTokens?: number;
   },
@@ -80,10 +80,11 @@ async function callLlm(
       messages: params.messages,
       temperature: params.temperature ?? 0.7,
       max_tokens: params.maxTokens ?? 500,
+      thinking: { type: 'enabled' },
     };
     if (params.tools?.length) {
       body.tools = params.tools;
-      body.tool_choice = params.tool_choice ?? 'auto';
+      body.tool_choice = params.toolChoice ?? 'auto';
     }
 
     const res = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
@@ -101,12 +102,14 @@ async function callLlm(
     return await res.json() as LlmResponse;
   }
 
+  const supportsThinking = params.model.startsWith('anthropic/');
   return await client.ai.chat.completions.create({
     model: params.model,
     messages: params.messages,
-    ...(params.tools?.length ? { tools: params.tools, tool_choice: params.tool_choice } : {}),
+    ...(params.tools?.length ? { tools: params.tools, toolChoice: params.toolChoice } : {}),
     temperature: params.temperature,
     maxTokens: params.maxTokens,
+    ...(supportsThinking ? { thinking: true } : {}),
   }) as LlmResponse;
 }
 
@@ -308,7 +311,7 @@ async function runGameLoop(
             { role: 'user', content: userMessage },
           ],
           tools,
-          tool_choice: 'required',
+          toolChoice: 'auto',
           temperature: 0.7,
           maxTokens: agentMaxTokens,
         });
@@ -316,13 +319,22 @@ async function runGameLoop(
 
         rawResponse = completion;
         const message = completion.choices?.[0]?.message;
-        reasoning = message?.content || message?.reasoning_content || '';
+        const thinkingReasoning = message?.reasoning_content || '';
 
         const toolCall = message?.tool_calls?.[0];
         if (toolCall) {
+          let toolReasoning = '';
+          try {
+            const toolArgs = JSON.parse(toolCall.function.arguments);
+            toolReasoning = toolArgs.reasoning || '';
+          } catch {
+            // ignore parse errors
+          }
+          reasoning = thinkingReasoning || toolReasoning || message?.content || '';
           const parsedActions = parseToolCall(toolCall);
           action = parsedActions[0] || { type: 'rest' };
         } else {
+          reasoning = thinkingReasoning || message?.content || '';
           action = { type: 'rest' };
         }
       } catch (err) {

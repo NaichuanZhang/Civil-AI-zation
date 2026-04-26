@@ -25,7 +25,7 @@ var AGENT_PERSONALITIES = {
 };
 var AGENT_CONFIG_MAP = {
   opus: {
-    modelId: "z-ai/glm-5.1",
+    modelId: "zai/glm-5-turbo",
     speed: 2,
     hp: 25,
     startPosition: { x: 0, y: 2 },
@@ -42,7 +42,7 @@ var AGENT_CONFIG_MAP = {
     maxTokens: 500
   },
   haiku: {
-    modelId: "openai/gpt-4o-mini",
+    modelId: "anthropic/claude-haiku-4.5",
     speed: 4,
     hp: 15,
     startPosition: { x: 1, y: 0 },
@@ -761,6 +761,10 @@ Rules:
       parameters: {
         type: "object",
         properties: {
+          reasoning: {
+            type: "string",
+            description: "Your strategic thinking and reasoning about the current situation before choosing actions. Analyze threats, opportunities, and explain your plan."
+          },
           actions: {
             type: "array",
             items: {
@@ -778,7 +782,7 @@ Rules:
             description: 'Sequence of actions to perform. Format: "action:param" or "rest". Example: ["move:left", "attack:opus"]'
           }
         },
-        required: ["actions"]
+        required: ["reasoning", "actions"]
       }
     }
   }];
@@ -1005,11 +1009,12 @@ async function callLlm(client, params) {
       model: actualModel,
       messages: params.messages,
       temperature: params.temperature ?? 0.7,
-      max_tokens: params.maxTokens ?? 500
+      max_tokens: params.maxTokens ?? 500,
+      thinking: { type: "enabled" }
     };
     if (params.tools?.length) {
       body.tools = params.tools;
-      body.tool_choice = params.tool_choice ?? "auto";
+      body.tool_choice = params.toolChoice ?? "auto";
     }
     const res = await fetch("https://api.z.ai/api/paas/v4/chat/completions", {
       method: "POST",
@@ -1025,12 +1030,14 @@ async function callLlm(client, params) {
     }
     return await res.json();
   }
+  const supportsThinking = params.model.startsWith("anthropic/");
   return await client.ai.chat.completions.create({
     model: params.model,
     messages: params.messages,
-    ...params.tools?.length ? { tools: params.tools, tool_choice: params.tool_choice } : {},
+    ...params.tools?.length ? { tools: params.tools, toolChoice: params.toolChoice } : {},
     temperature: params.temperature,
-    maxTokens: params.maxTokens
+    maxTokens: params.maxTokens,
+    ...supportsThinking ? { thinking: true } : {}
   });
 }
 async function index_src_default(req) {
@@ -1183,19 +1190,27 @@ async function runGameLoop(client, gameId, initialState, config) {
             { role: "user", content: userMessage }
           ],
           tools,
-          tool_choice: "required",
+          toolChoice: "auto",
           temperature: 0.7,
           maxTokens: agentMaxTokens
         });
         console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId}, ${agentMaxTokens} tokens)`);
         rawResponse = completion;
         const message = completion.choices?.[0]?.message;
-        reasoning = message?.content || message?.reasoning_content || "";
+        const thinkingReasoning = message?.reasoning_content || "";
         const toolCall = message?.tool_calls?.[0];
         if (toolCall) {
+          let toolReasoning = "";
+          try {
+            const toolArgs = JSON.parse(toolCall.function.arguments);
+            toolReasoning = toolArgs.reasoning || "";
+          } catch {
+          }
+          reasoning = thinkingReasoning || toolReasoning || message?.content || "";
           const parsedActions = parseToolCall(toolCall);
           action = parsedActions[0] || { type: "rest" };
         } else {
+          reasoning = thinkingReasoning || message?.content || "";
           action = { type: "rest" };
         }
       } catch (err) {

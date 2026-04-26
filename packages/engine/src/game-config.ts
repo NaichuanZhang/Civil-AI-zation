@@ -47,7 +47,7 @@ export const AGENT_PERSONALITIES = {
  */
 export const AGENT_CONFIG_MAP = {
   opus: {
-    modelId: 'z-ai/glm-5.1',
+    modelId: 'zai/glm-5-turbo',
     speed: 2,
     hp: 25,
     startPosition: { x: 0, y: 2 },
@@ -63,7 +63,7 @@ export const AGENT_CONFIG_MAP = {
     maxTokens: 500,
   },
   haiku: {
-    modelId: 'openai/gpt-4o-mini',
+    modelId: 'anthropic/claude-haiku-4.5',
     speed: 4,
     hp: 15,
     startPosition: { x: 1, y: 0 },
@@ -144,7 +144,7 @@ export const AGENT_COLORS = {
  * Human-readable model names for UI
  */
 export const AGENT_MODELS = {
-  opus: 'GLM-5.1',
+  opus: 'GLM-5 Turbo',
   sonnet: 'GPT-4o Mini',
-  haiku: 'GPT-4o Mini',
+  haiku: 'Claude Haiku 4.5',
 } as const;

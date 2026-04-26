@@ -1,4 +1,5 @@
 import type { AgentUIState, ChestUIState } from '../types';
+import { AGENT_NAMES } from '../config';
 
 const AGENT_COLORS: Record<string, string> = {
   opus: '#8b5cf6',
@@ -65,7 +66,7 @@ export function Grid({ agents, chests, currentTurnAgent, gridSize = 3 }: GridPro
               }}
             >
               <span style={{ fontSize: 16 }}>{DIR_ARROWS[agent.orientation] ?? '?'}</span>
-              <span style={{ fontSize: 9 }}>{agent.agentId[0]?.toUpperCase()}</span>
+              <span style={{ fontSize: 9 }}>{(AGENT_NAMES[agent.agentId] ?? agent.agentId)[0]?.toUpperCase()}</span>
             </div>
           ) : chest ? (
             <span style={{ fontSize: 24 }}>📦</span>
