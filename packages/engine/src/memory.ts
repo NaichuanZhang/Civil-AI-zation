@@ -1,4 +1,4 @@
-import type { ActionResult, AgentId, AgentState } from './types.js';
+import type { ActionResult, AttackResult, AgentId, AgentState } from './types.js';
 
 export function appendMemory(
   currentMemory: readonly string[],
@@ -44,4 +44,16 @@ export function buildMemoryEntry(
     case 'invalid':
       return `Round ${round}: Invalid action (${result.reason}). Rested instead. +${result.fallbackAction.epBonusNextTurn} EP next turn.`;
   }
+}
+
+export function buildTargetMemoryEntry(
+  round: number,
+  attackerId: AgentId,
+  result: AttackResult,
+): string {
+  let entry = `Round ${round}: ${attackerId} attacked me from the ${result.hitZone} for ${result.damage} damage. My HP: ${result.targetHpBefore}→${result.targetHpAfter}.`;
+  if (result.targetEliminated) {
+    entry += ' I was eliminated!';
+  }
+  return entry;
 }

@@ -61,7 +61,7 @@ export {
   buildPersonalView,
 } from './state.js';
 
-export { appendMemory, buildMemoryEntry } from './memory.js';
+export { appendMemory, buildMemoryEntry, buildTargetMemoryEntry } from './memory.js';
 
 export {
   validateMove,

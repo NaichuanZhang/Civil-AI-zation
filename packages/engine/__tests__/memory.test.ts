@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { appendMemory, buildMemoryEntry } from '../src/memory.js';
-import type { ActionResult, AgentState } from '../src/types.js';
+import { appendMemory, buildMemoryEntry, buildTargetMemoryEntry } from '../src/memory.js';
+import type { ActionResult, AttackResult, AgentState } from '../src/types.js';
 
 const makeAgent = (
   overrides: Partial<AgentState> & Pick<AgentState, 'agentId'>
@@ -120,6 +120,40 @@ describe('buildMemoryEntry', () => {
     const entry = buildMemoryEntry(5, 'opus', result, agents);
     expect(entry).toBe(
       'Round 5: Invalid action (Target not adjacent). Rested instead. +1 EP next turn.',
+    );
+  });
+});
+
+describe('buildTargetMemoryEntry', () => {
+  it('builds entry from victim perspective', () => {
+    const result: AttackResult = {
+      type: 'attack',
+      target: 'sonnet',
+      hitZone: 'back',
+      damage: 7,
+      targetHpBefore: 20,
+      targetHpAfter: 13,
+      targetEliminated: false,
+    };
+    const entry = buildTargetMemoryEntry(3, 'haiku', result);
+    expect(entry).toBe(
+      'Round 3: haiku attacked me from the back for 7 damage. My HP: 20→13.',
+    );
+  });
+
+  it('includes elimination notice', () => {
+    const result: AttackResult = {
+      type: 'attack',
+      target: 'sonnet',
+      hitZone: 'side',
+      damage: 5,
+      targetHpBefore: 5,
+      targetHpAfter: 0,
+      targetEliminated: true,
+    };
+    const entry = buildTargetMemoryEntry(7, 'opus', result);
+    expect(entry).toBe(
+      'Round 7: opus attacked me from the side for 5 damage. My HP: 5→0. I was eliminated!',
     );
   });
 });

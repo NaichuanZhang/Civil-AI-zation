@@ -70,17 +70,23 @@ export function useGameState() {
       });
 
       insforge.realtime.on('turn_completed', (payload: Record<string, unknown>) => {
+        const actingAgent = (payload as { agentId: string }).agentId;
+        const action = payload.action as EventLogEntry['action'];
+        const incoming = payload.agents as GameUIState['agents'];
+        const agents = incoming.map((a) =>
+          a.agentId === actingAgent ? { ...a, lastAction: action } : a,
+        );
         setState((s) => ({
           ...s,
-          agents: payload.agents as GameUIState['agents'],
+          agents,
           currentTurnAgent: null,
           eventLog: [
             ...s.eventLog,
             {
               type: 'turn',
               round: s.round,
-              agentId: (payload as { agentId: string }).agentId,
-              action: payload.action as EventLogEntry['action'],
+              agentId: actingAgent,
+              action,
               result: payload.result as EventLogEntry['result'],
             } satisfies EventLogEntry,
           ],

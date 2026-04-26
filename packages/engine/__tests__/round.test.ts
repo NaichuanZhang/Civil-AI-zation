@@ -64,6 +64,31 @@ describe('processRound', () => {
     });
   });
 
+  it('target agent gets memory entry when attacked', () => {
+    const config = {
+      ...DEFAULT_GAME_CONFIG,
+      agents: [
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 25, position: { x: 0, y: 2 }, orientation: 'N' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 20, position: { x: 1, y: 1 }, orientation: 'N' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 15, position: { x: 1, y: 0 }, orientation: 'S' as const },
+      ],
+    };
+
+    const decider: ActionDecider = (agentId) => {
+      if (agentId === 'sonnet') return { type: 'attack', target: 'haiku' };
+      return { type: 'rest' };
+    };
+
+    const state = createInitialState(config);
+    const newState = processRound(state, decider);
+
+    const haiku = newState.agents.find((a) => a.agentId === 'haiku')!;
+    expect(haiku.memory.some((m) => m.includes('sonnet attacked me'))).toBe(true);
+
+    const sonnet = newState.agents.find((a) => a.agentId === 'sonnet')!;
+    expect(sonnet.memory.some((m) => m.includes('I attacked haiku'))).toBe(true);
+  });
+
   it('skips eliminated agents', () => {
     const state = createInitialState(DEFAULT_GAME_CONFIG);
     const agents = updateAgent(state.agents, 'haiku', {

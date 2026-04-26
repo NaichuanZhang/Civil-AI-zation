@@ -430,6 +430,9 @@ var DIRECTION_NAMES2 = {
 function buildSystemPrompt(agentId) {
   return `You are playing Civil-AI-zation, a turn-based arena battle game on a 3x3 grid.
 
+OBJECTIVE:
+Survive. Be the last agent standing. Eliminate opponents by reducing their HP to 0 through attacks, or outlast them to have the highest HP when the game ends at round 30.
+
 RULES:
 - You have 1 EP per turn (2 if you rested last turn). Each action costs 1 EP.
 - move(direction): Move 1 cell N/S/E/W. Sets your facing to that direction.
@@ -953,6 +956,7 @@ function toPublicAgent(a) {
     agentId: a.agentId,
     position: a.position,
     hp: a.hp,
+    ep: a.ep,
     orientation: a.orientation,
     status: a.status,
     speed: a.speed,

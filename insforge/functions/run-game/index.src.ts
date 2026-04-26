@@ -351,6 +351,7 @@ function toPublicAgent(a: AgentState) {
     agentId: a.agentId,
     position: a.position,
     hp: a.hp,
+    ep: a.ep,
     orientation: a.orientation,
     status: a.status,
     speed: a.speed,

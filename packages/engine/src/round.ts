@@ -10,7 +10,7 @@ import type {
 import { getTurnOrder, resetEpForTurn } from './turn.js';
 import { executeAction } from './actions.js';
 import { buildSharedView, buildPersonalView, updateAgent } from './state.js';
-import { appendMemory, buildMemoryEntry } from './memory.js';
+import { appendMemory, buildMemoryEntry, buildTargetMemoryEntry } from './memory.js';
 
 export type ActionDecider = (
   agentId: AgentId,
@@ -66,6 +66,13 @@ export function processRound(
       state.config.memoryCap,
     );
     agents = updateAgent(agents, turnAgent.agentId, { memory: newMemory });
+
+    if (result.type === 'attack') {
+      const targetAgent = agents.find((a) => a.agentId === result.target)!;
+      const targetEntry = buildTargetMemoryEntry(round, turnAgent.agentId, result);
+      const targetNewMemory = appendMemory(targetAgent.memory, targetEntry, state.config.memoryCap);
+      agents = updateAgent(agents, result.target, { memory: targetNewMemory });
+    }
 
     newTurnRecords.push({
       roundNumber: round,
