@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useGameState } from './hooks/useGameState';
 import { Grid } from './components/Grid';
 import { AgentPanel } from './components/AgentPanel';
-import { EventLog } from './components/EventLog';
+import { LogViewer } from './components/LogViewer';
 import { GameControls } from './components/GameControls';
 import { Settings } from './components/Settings';
 
@@ -81,7 +81,7 @@ export function App() {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <EventLog entries={state.eventLog} />
+        <LogViewer systemLogs={state.eventLog} />
       </div>
     </div>
   );

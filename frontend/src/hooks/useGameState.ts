@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { insforge } from '../insforge';
+import { useLog } from '../contexts/LogContext';
 import type { GameUIState, EventLogEntry } from '../types';
 
 const INITIAL_STATE: GameUIState = {
@@ -14,16 +15,30 @@ const INITIAL_STATE: GameUIState = {
 
 export function useGameState() {
   const [state, setState] = useState<GameUIState>(INITIAL_STATE);
+  const { addLog, recordMode } = useLog();
 
   const startGame = useCallback(async () => {
+    console.log('[useGameState] Starting game...');
     setState((s) => ({ ...s, status: 'loading', eventLog: [], result: null }));
+
+    console.log('[useGameState] Invoking run-game function...');
     const { data, error } = await insforge.functions.invoke('run-game', {
       body: {},
     });
-    if (error || !data) {
+
+    if (error) {
+      console.error('[useGameState] Error starting game:', error);
       setState((s) => ({ ...s, status: 'idle' }));
       return;
     }
+
+    if (!data) {
+      console.error('[useGameState] No data returned from run-game');
+      setState((s) => ({ ...s, status: 'idle' }));
+      return;
+    }
+
+    console.log('[useGameState] Game started successfully:', data);
     setState((s) => ({ ...s, gameId: data.gameId, status: 'running' }));
   }, []);
 
@@ -66,16 +81,61 @@ export function useGameState() {
       });
 
       insforge.realtime.on('turn_started', (payload: Record<string, unknown>) => {
-        setState((s) => ({ ...s, currentTurnAgent: payload.agentId as string }));
+        const agentId = payload.agentId as string;
+
+        // Log to agent-specific tab if recording
+        if (recordMode) {
+          addLog(
+            agentId as 'opus' | 'sonnet' | 'haiku',
+            'system',
+            `Turn started - ${agentId} is thinking...`,
+            { round: state.round, agentId }
+          );
+        }
+
+        setState((s) => ({
+          ...s,
+          currentTurnAgent: agentId,
+          eventLog: [
+            ...s.eventLog,
+            {
+              type: 'turn',
+              round: s.round,
+              agentId,
+              text: `${agentId} is thinking...`,
+            } as EventLogEntry,
+          ],
+        }));
       });
 
       insforge.realtime.on('turn_completed', (payload: Record<string, unknown>) => {
-        const actingAgent = (payload as { agentId: string }).agentId;
+        const agentId = (payload as { agentId: string }).agentId;
         const action = payload.action as EventLogEntry['action'];
+        const result = payload.result as EventLogEntry['result'];
         const incoming = payload.agents as GameUIState['agents'];
         const agents = incoming.map((a) =>
-          a.agentId === actingAgent ? { ...a, lastAction: action } : a,
+          a.agentId === agentId ? { ...a, lastAction: action } : a,
         );
+
+        // Log action and result to agent-specific tab if recording
+        if (recordMode) {
+          addLog(
+            agentId as 'opus' | 'sonnet' | 'haiku',
+            'action',
+            `Action: ${action?.type || 'unknown'}${action?.direction ? ' ' + action.direction : ''}${action?.target ? ' → ' + action.target : ''}`,
+            { action, result }
+          );
+
+          if (result) {
+            addLog(
+              agentId as 'opus' | 'sonnet' | 'haiku',
+              'result',
+              `Result: ${result.type}${result.damage ? ` (${result.damage} damage)` : ''}${result.targetEliminated ? ' [ELIMINATED]' : ''}`,
+              result
+            );
+          }
+        }
+
         setState((s) => ({
           ...s,
           agents,
@@ -85,9 +145,9 @@ export function useGameState() {
             {
               type: 'turn',
               round: s.round,
-              agentId: actingAgent,
+              agentId,
               action,
-              result: payload.result as EventLogEntry['result'],
+              result,
             } satisfies EventLogEntry,
           ],
         }));
