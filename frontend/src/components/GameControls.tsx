@@ -101,7 +101,17 @@ export function GameControls({ status, round, result, isPaused, onStartGame, onT
           </button>
           <span style={{ color: '#94a3b8', fontSize: 14 }}>
             Round {round} / 30
-            {isPaused && <span style={{ color: '#eab308', marginLeft: 8 }}>⏸ PAUSED</span>}
+            {isPaused && (
+              <span
+                style={{
+                  color: '#eab308',
+                  marginLeft: 8,
+                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                }}
+              >
+                ⏸ PAUSED - Will pause after this round completes
+              </span>
+            )}
           </span>
         </>
       )}
