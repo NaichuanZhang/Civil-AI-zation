@@ -7,7 +7,7 @@
     "dev": "pnpm --filter frontend dev",
     "build": "pnpm --filter frontend build",
     "build:edge": "esbuild insforge/functions/run-game/index.src.ts --bundle --format=esm --platform=neutral --external:npm:@insforge/sdk --outfile=insforge/functions/run-game/index.ts",
-    "deploy:functions": "npx @insforge/cli functions deploy run-game && npx @insforge/cli functions deploy spectate",
+    "deploy:functions": "npx @insforge/cli functions deploy run-game && npx @insforge/cli functions deploy spectate && npx @insforge/cli functions deploy narrator-tts && npx @insforge/cli functions deploy narrator-auth",
     "db:migrate": "npx @insforge/cli db migrations up --all"
   },
   "pnpm": {

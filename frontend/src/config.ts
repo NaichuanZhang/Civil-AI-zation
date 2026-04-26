@@ -101,3 +101,17 @@ export const GAME_CONFIG = {
   maxRounds: 30,
   mapSize: 3,
 } as const;
+
+/**
+ * Narrator Configuration
+ */
+export const NARRATOR_CONFIG = {
+  containerWidth: 280,
+  avatarHeight: 200,
+  subtitleMaxLines: 2,
+  subtitleDismissMs: 3500,
+  queueMaxTTSItems: 3,
+  staleThresholdMs: 30_000,
+  pcmSampleRate: 16000,
+  pcmChunkSize: 4096,
+} as const;
