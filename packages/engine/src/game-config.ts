@@ -85,10 +85,10 @@ export const AGENT_INITIAL_HP = Object.fromEntries(
  * Controls chest spawning and item effects
  */
 export const CHEST_CONFIG = {
-  enabled: true,                      // Enable/disable chest feature
-  spawnRounds: [5, 10, 15, 20, 25],  // Rounds when chests spawn
-  hpBoostAmount: 5,                  // HP gained from hp_boost item
-  hpDrainAmount: -5,                 // HP lost from hp_drain item
+  enabled: true,                          // Enable/disable chest feature
+  spawnRounds: [5, 10, 15, 20, 25, 30],  // Chests spawn every 5 rounds
+  hpBoostAmount: 5,                      // HP gained from hp_boost item
+  hpDrainAmount: -5,                     // HP lost from hp_drain item
 } as const;
 
 /**

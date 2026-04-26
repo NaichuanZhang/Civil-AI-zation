@@ -189,6 +189,7 @@ describe('executeAction', () => {
         { type: 'move', direction: 'right' },
         agents,
         config,
+        [],
       );
       const opus = newAgents.find((a) => a.agentId === 'opus')!;
       expect(opus.position).toEqual({ x: 2, y: 1 });

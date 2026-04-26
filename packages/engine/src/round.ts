@@ -26,7 +26,16 @@ export function processRound(
 ): GameState {
   const round = state.round + 1;
   let agents = state.agents;
+  let chests = state.chests;
   const newTurnRecords: TurnRecord[] = [];
+
+  // Spawn chest if this is a spawn round
+  if (state.config.chests.enabled && state.config.chests.spawnRounds.includes(round)) {
+    const newChest = spawnChest(agents, chests, state.config);
+    if (newChest) {
+      chests = [...chests, newChest];
+    }
+  }
 
   const turnOrder = getTurnOrder(agents);
 
@@ -40,19 +49,21 @@ export function processRound(
     const withEp = resetEpForTurn(currentAgent, state.config, restedLastTurn);
     agents = updateAgent(agents, turnAgent.agentId, { ep: withEp.ep });
 
-    const currentState: GameState = { ...state, round, agents };
+    const currentState: GameState = { ...state, round, agents, chests };
     const sharedView = buildSharedView(currentState);
     const personalView = buildPersonalView(currentState, turnAgent.agentId);
 
     const action = decider(turnAgent.agentId, sharedView, personalView, state.config);
 
-    const { agents: updatedAgents, result } = executeAction(
+    const { agents: updatedAgents, chests: updatedChests, result } = executeAction(
       turnAgent.agentId,
       action,
       agents,
       state.config,
+      chests,
     );
     agents = updatedAgents;
+    chests = updatedChests;
 
     const resolvedAction =
       result.type === 'invalid'
@@ -87,6 +98,7 @@ export function processRound(
     ...state,
     round,
     agents,
+    chests,
     turnRecords: [...state.turnRecords, ...newTurnRecords],
   };
 }

@@ -24,8 +24,14 @@ export function buildMemoryEntry(
   _agents: readonly AgentState[],
 ): string {
   switch (result.type) {
-    case 'move':
-      return `Round ${round}: I moved ${DIRECTION_NAMES[result.newOrientation]} to (${result.to.x},${result.to.y}), facing ${DIRECTION_NAMES[result.newOrientation]}.`;
+    case 'move': {
+      let entry = `Round ${round}: I moved ${DIRECTION_NAMES[result.newOrientation]} to (${result.to.x},${result.to.y}), facing ${DIRECTION_NAMES[result.newOrientation]}.`;
+      if (result.chestCollected) {
+        const itemDesc = result.chestCollected.item.type === 'hp_boost' ? 'HP boost' : 'HP drain';
+        entry += ` Opened chest! Got ${itemDesc}: HP ${result.chestCollected.hpBefore}→${result.chestCollected.hpAfter}.`;
+      }
+      return entry;
+    }
 
     case 'attack': {
       let entry = `Round ${round}: I attacked ${result.target} from the ${result.hitZone} for ${result.damage} damage. ${result.target} HP: ${result.targetHpBefore}→${result.targetHpAfter}.`;

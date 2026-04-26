@@ -39,6 +39,7 @@ describe('Agent Prompt - SURROUNDING field', () => {
       ],
       eliminatedAgents: [],
       previousRoundSummary: null,
+      chests: [],
     };
 
     const personalView: PersonalAgentView = {
@@ -82,6 +83,7 @@ describe('Agent Prompt - SURROUNDING field', () => {
       ],
       eliminatedAgents: [],
       previousRoundSummary: null,
+      chests: [],
     };
 
     const personalView: PersonalAgentView = {
@@ -125,6 +127,7 @@ describe('Agent Prompt - SURROUNDING field', () => {
       ],
       eliminatedAgents: [],
       previousRoundSummary: null,
+      chests: [],
     };
 
     const personalView: PersonalAgentView = {
@@ -168,6 +171,7 @@ describe('Agent Prompt - SURROUNDING field', () => {
       ],
       eliminatedAgents: [],
       previousRoundSummary: null,
+      chests: [],
     };
 
     const personalView: PersonalAgentView = {

@@ -441,9 +441,118 @@ export const DEFAULT_GAME_CONFIG = {
 
 ---
 
+---
+
+## Treasure Chests
+
+**NEW FEATURE:** Treasure chests spawn at specific rounds and contain items that affect agent HP.
+
+### Chest Mechanics
+
+**Spawning:**
+- Chests spawn at configured rounds (default: rounds 5, 10, 15, 20, 25)
+- Spawn in random empty cells (not occupied by agents or existing chests)
+- Only one chest spawns per spawn round
+- If all cells are occupied, no chest spawns that round
+
+**Visibility:**
+- All agents can see chest locations on the map (marked with 'C')
+- Contents are **hidden** until opened
+- Agents are informed that chests exist but not what's inside
+
+**Collection:**
+- Chests are automatically opened when an agent **moves onto** the chest's cell
+- Cannot be opened from adjacent cells - must move to the chest position
+- Once opened, the chest disappears and the item effect applies
+
+### Chest Items
+
+**Item Types:**
+- `hp_boost`: Increases agent HP
+- `hp_drain`: Decreases agent HP
+
+**Item Effects:**
+- Effects are **configurable** (not revealed to agents)
+- Default: +5 HP (boost) or -5 HP (drain)
+- HP cannot drop below 1 from chest items (minimum HP = 1)
+- 50/50 random chance of boost or drain per chest
+
+**Move Result with Chest:**
+```typescript
+{
+  type: 'move',
+  from: { x: 0, y: 0 },
+  to: { x: 1, y: 0 },
+  newOrientation: 'right',
+  chestCollected: {
+    item: { type: 'hp_boost', hpChange: 5 },
+    hpBefore: 20,
+    hpAfter: 25,
+  }
+}
+```
+
+### Strategic Considerations
+
+**Risk vs Reward:**
+- Chests are a gamble - could help or harm
+- Agents must weigh the risk against their current HP and game state
+
+**Tactical Positioning:**
+- Chests can be used as bait to lure opponents
+- Controlling chest locations can be a strategic advantage
+- May create conflicts when multiple agents target the same chest
+
+**Information Asymmetry:**
+- Agents know chest locations but not contents
+- Must decide whether to take the risk based on game state
+- Observed opponent behavior may provide clues
+
+### Memory Integration
+
+When an agent collects a chest, it's recorded in their memory:
+```
+Round 5: I moved right to (1,0), facing right. Opened chest! Got HP boost: HP 20→25.
+```
+
+### Configuration
+
+Chest behavior is configured in `game-config.ts`:
+
+```typescript
+export const CHEST_CONFIG = {
+  enabled: true,                      // Enable/disable feature
+  spawnRounds: [5, 10, 15, 20, 25],  // Rounds when chests spawn
+  hpBoostAmount: 5,                  // HP gained from boost
+  hpDrainAmount: -5,                 // HP lost from drain
+} as const;
+```
+
+**Customization:**
+- `enabled`: Set to `false` to disable chests entirely
+- `spawnRounds`: Array of round numbers when chests appear
+- `hpBoostAmount`: Positive number for HP increase
+- `hpDrainAmount`: Negative number for HP decrease
+
+**Examples:**
+```typescript
+// More frequent spawns
+spawnRounds: [3, 6, 9, 12, 15, 18, 21, 24, 27, 30]
+
+// Higher stakes
+hpBoostAmount: 10,
+hpDrainAmount: -10,
+
+// Only beneficial chests (for testing)
+// (Modify chest.ts to always return hp_boost)
+```
+
+---
+
 ## See Also
 
 - [CLAUDE.md](./CLAUDE.md) - Project overview and architecture
 - [packages/engine/src/actions.ts](./packages/engine/src/actions.ts) - Action validation and execution
 - [packages/engine/src/combat.ts](./packages/engine/src/combat.ts) - Damage calculation
 - [packages/engine/src/game-config.ts](./packages/engine/src/game-config.ts) - Configuration constants
+- [packages/engine/src/chest.ts](./packages/engine/src/chest.ts) - Chest spawning and collection logic

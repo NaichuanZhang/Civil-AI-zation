@@ -6,7 +6,10 @@ export type {
   GameStatus,
   GameResult,
   ActionType,
+  ChestItemType,
   Position,
+  ChestItem,
+  TreasureChest,
   AgentConfig,
   AgentState,
   MoveAction,
@@ -23,9 +26,11 @@ export type {
   InvalidResult,
   ActionResult,
   TurnRecord,
+  ChestConfig,
   GameConfig,
   GameState,
   RoundSummary,
+  PublicChestView,
   SharedGameView,
   PublicAgentView,
   EliminatedAgentView,
@@ -42,6 +47,7 @@ export {
   AGENT_PERSONALITIES,
   AGENT_CONFIG_MAP,
   AGENT_INITIAL_HP,
+  CHEST_CONFIG,
   UI_CONFIG,
   AGENT_COLORS,
   AGENT_MODELS,
@@ -113,3 +119,5 @@ export {
 export type { ToolDefinition } from './agent-prompt.js';
 
 export { buildSummaryPrompt } from './summary.js';
+
+export { spawnChest, findChestAtPosition, openChest } from './chest.js';
