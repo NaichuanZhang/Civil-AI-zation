@@ -580,10 +580,24 @@ function buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirect
   const summaryText = sharedView.previousRoundSummary ?? "First round - no previous summary.";
   return `=== ROUND ${sharedView.round} ===
 
+\u2501\u2501\u2501 \u{1F50D} YOUR IMMEDIATE SURROUNDINGS (ONLY USE THIS FOR SPATIAL DECISIONS) \u2501\u2501\u2501
+${surroundingInfo}
+
+\u26A0\uFE0F CRITICAL RULES FOR USING SURROUNDING:
+1. ONLY agents shown in SURROUNDING are adjacent (1 cell away) - you can attack them
+2. Agents NOT in SURROUNDING are 2+ cells away - you CANNOT attack them yet
+3. DO NOT calculate directions from coordinates - ONLY use SURROUNDING field
+4. If SURROUNDING shows "Empty" for all 4 directions, NO agents are adjacent to you
+
+Example: If SURROUNDING = { up: "Empty", down: "Empty", left: "opus", right: "Empty" }
+\u2192 ONLY opus is adjacent (to your left)
+\u2192 All other agents are far away (2+ cells)
+\u2192 To attack opus: turn(left) then attack(opus)
+
 BOARD STATE (${sharedView.mapWidth}x${sharedView.mapHeight} grid):
 ${grid}
 
-ALIVE AGENTS:
+ALIVE AGENTS (WARNING: These positions are for context only! Use SURROUNDING above for adjacency):
 ${agentLines}
 
 ELIMINATED AGENTS:
@@ -591,7 +605,7 @@ ${eliminatedLines}
 
 YOUR STATUS:
 - HP: ${personalView.hp}, EP: ${personalView.ep}, Position: (${personalView.position.x},${personalView.position.y}), Facing: ${DIRECTION_NAMES2[personalView.orientation]}
-- SURROUNDING: ${surroundingInfo}
+
 - Adjacent cells: ${adjacentInfo}
 - Valid moves: ${validMoveDirections.length > 0 ? validMoveDirections.map((d) => `${d} (${DIRECTION_NAMES2[d]})`).join(", ") : "None \u2014 you are boxed in"}
 - ${buildAttackTargetInfo(personalView, aliveAgents, sharedView.mapWidth, sharedView.mapHeight)}
