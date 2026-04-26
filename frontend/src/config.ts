@@ -4,14 +4,27 @@
  */
 
 /**
- * Agent Initial HP
- * Should match backend configuration
+ * Get list of all agent IDs
  */
-export const AGENT_INITIAL_HP: Record<string, number> = {
-  opus: 25,
-  sonnet: 20,
-  haiku: 15,
+export const getAgentIds = () => Object.keys(AGENT_STATS) as Array<keyof typeof AGENT_STATS>;
+
+/**
+ * Agent Stats
+ * Should match backend AGENT_CONFIG_MAP
+ */
+export const AGENT_STATS = {
+  opus: { hp: 25, speed: 2 },
+  sonnet: { hp: 20, speed: 3 },
+  haiku: { hp: 15, speed: 4 },
 } as const;
+
+/**
+ * Agent Initial HP (derived from AGENT_STATS)
+ * For backwards compatibility
+ */
+export const AGENT_INITIAL_HP = Object.fromEntries(
+  Object.entries(AGENT_STATS).map(([id, stats]) => [id, stats.hp])
+) as Record<keyof typeof AGENT_STATS, number>;
 
 /**
  * Agent Visual Configuration

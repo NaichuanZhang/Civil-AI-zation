@@ -6,12 +6,7 @@ import type {
   SharedGameView,
   PersonalAgentView,
 } from './types.js';
-
-const AGENT_PERSONALITIES: Record<AgentId, string> = {
-  opus: 'You are Opus, a strategic and patient warrior. You think several moves ahead, value positioning, and prefer to attack from advantageous angles.',
-  sonnet: 'You are Sonnet, a balanced and adaptive fighter. You assess the situation pragmatically, adapting your strategy to the current board state.',
-  haiku: 'You are Haiku, an aggressive and impulsive combatant. You favor direct action, closing distance quickly and attacking whenever possible.',
-};
+import { AGENT_PERSONALITIES } from './game-config.js';
 
 const DIRECTION_NAMES: Record<string, string> = {
   N: 'North',
@@ -220,8 +215,9 @@ export function parseToolCall(toolCall: {
       }
       case 'attack': {
         const target = args['target'];
-        if (target === 'opus' || target === 'sonnet' || target === 'haiku') {
-          return { type: 'attack', target };
+        // Validate target is a valid AgentId
+        if (target && typeof target === 'string' && target in AGENT_PERSONALITIES) {
+          return { type: 'attack', target: target as AgentId };
         }
         return { type: 'rest' };
       }

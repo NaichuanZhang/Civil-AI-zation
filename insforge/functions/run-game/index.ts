@@ -18,6 +18,11 @@ var BACKEND_CONFIG = {
   gameLoopDelayMs: 2e3
   // Initial delay before game loop starts
 };
+var AGENT_PERSONALITIES = {
+  opus: "You are Opus, a strategic and patient warrior. You think several moves ahead, value positioning, and prefer to attack from advantageous angles.",
+  sonnet: "You are Sonnet, a balanced and adaptive fighter. You assess the situation pragmatically, adapting your strategy to the current board state.",
+  haiku: "You are Haiku, an aggressive and impulsive combatant. You favor direct action, closing distance quickly and attacking whenever possible."
+};
 var AGENT_CONFIG_MAP = {
   opus: {
     modelId: "openai/gpt-4o-mini",
@@ -41,11 +46,9 @@ var AGENT_CONFIG_MAP = {
     startOrientation: "S"
   }
 };
-var AGENT_INITIAL_HP = {
-  opus: AGENT_CONFIG_MAP.opus.hp,
-  sonnet: AGENT_CONFIG_MAP.sonnet.hp,
-  haiku: AGENT_CONFIG_MAP.haiku.hp
-};
+var AGENT_INITIAL_HP = Object.fromEntries(
+  Object.entries(AGENT_CONFIG_MAP).map(([id, config]) => [id, config.hp])
+);
 var DEFAULT_GAME_CONFIG = {
   mapWidth: 3,
   mapHeight: 3,
@@ -54,32 +57,14 @@ var DEFAULT_GAME_CONFIG = {
   restEpBonus: 1,
   memoryCap: 10,
   energyPoints: 1,
-  agents: [
-    {
-      agentId: "opus",
-      modelId: AGENT_CONFIG_MAP.opus.modelId,
-      speed: AGENT_CONFIG_MAP.opus.speed,
-      hp: AGENT_CONFIG_MAP.opus.hp,
-      position: AGENT_CONFIG_MAP.opus.startPosition,
-      orientation: AGENT_CONFIG_MAP.opus.startOrientation
-    },
-    {
-      agentId: "sonnet",
-      modelId: AGENT_CONFIG_MAP.sonnet.modelId,
-      speed: AGENT_CONFIG_MAP.sonnet.speed,
-      hp: AGENT_CONFIG_MAP.sonnet.hp,
-      position: AGENT_CONFIG_MAP.sonnet.startPosition,
-      orientation: AGENT_CONFIG_MAP.sonnet.startOrientation
-    },
-    {
-      agentId: "haiku",
-      modelId: AGENT_CONFIG_MAP.haiku.modelId,
-      speed: AGENT_CONFIG_MAP.haiku.speed,
-      hp: AGENT_CONFIG_MAP.haiku.hp,
-      position: AGENT_CONFIG_MAP.haiku.startPosition,
-      orientation: AGENT_CONFIG_MAP.haiku.startOrientation
-    }
-  ]
+  agents: Object.entries(AGENT_CONFIG_MAP).map(([agentId, config]) => ({
+    agentId,
+    modelId: config.modelId,
+    speed: config.speed,
+    hp: config.hp,
+    position: config.startPosition,
+    orientation: config.startOrientation
+  }))
 };
 
 // packages/engine/src/grid.ts
@@ -455,11 +440,6 @@ function checkWinCondition(state) {
 }
 
 // packages/engine/src/agent-prompt.ts
-var AGENT_PERSONALITIES = {
-  opus: "You are Opus, a strategic and patient warrior. You think several moves ahead, value positioning, and prefer to attack from advantageous angles.",
-  sonnet: "You are Sonnet, a balanced and adaptive fighter. You assess the situation pragmatically, adapting your strategy to the current board state.",
-  haiku: "You are Haiku, an aggressive and impulsive combatant. You favor direct action, closing distance quickly and attacking whenever possible."
-};
 var DIRECTION_NAMES2 = {
   N: "North",
   S: "South",
@@ -619,7 +599,7 @@ function parseToolCall(toolCall) {
       }
       case "attack": {
         const target = args["target"];
-        if (target === "opus" || target === "sonnet" || target === "haiku") {
+        if (target && typeof target === "string" && target in AGENT_PERSONALITIES) {
           return { type: "attack", target };
         }
         return { type: "rest" };

@@ -32,6 +32,16 @@ export const BACKEND_CONFIG = {
 } as const;
 
 /**
+ * Agent Personalities
+ * Personality descriptions for system prompts
+ */
+export const AGENT_PERSONALITIES = {
+  opus: 'You are Opus, a strategic and patient warrior. You think several moves ahead, value positioning, and prefer to attack from advantageous angles.',
+  sonnet: 'You are Sonnet, a balanced and adaptive fighter. You assess the situation pragmatically, adapting your strategy to the current board state.',
+  haiku: 'You are Haiku, an aggressive and impulsive combatant. You favor direct action, closing distance quickly and attacking whenever possible.',
+} as const;
+
+/**
  * Agent Configuration Map
  * Per-agent settings indexed by agent ID
  */
@@ -63,16 +73,14 @@ export const AGENT_CONFIG_MAP = {
  * Agent Initial HP (derived from AGENT_CONFIG_MAP)
  * For backwards compatibility
  */
-export const AGENT_INITIAL_HP = {
-  opus: AGENT_CONFIG_MAP.opus.hp,
-  sonnet: AGENT_CONFIG_MAP.sonnet.hp,
-  haiku: AGENT_CONFIG_MAP.haiku.hp,
-} as const;
+export const AGENT_INITIAL_HP = Object.fromEntries(
+  Object.entries(AGENT_CONFIG_MAP).map(([id, config]) => [id, config.hp])
+) as Record<keyof typeof AGENT_CONFIG_MAP, number>;
 
 /**
  * Default Game Configuration
  * Core game rules and map settings
- * Uses AGENT_CONFIG_MAP to generate agent array
+ * Dynamically generates agent array from AGENT_CONFIG_MAP
  */
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   mapWidth: 3,
@@ -82,32 +90,14 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   restEpBonus: 1,
   memoryCap: 10,
   energyPoints: 1,
-  agents: [
-    {
-      agentId: 'opus' as const,
-      modelId: AGENT_CONFIG_MAP.opus.modelId,
-      speed: AGENT_CONFIG_MAP.opus.speed,
-      hp: AGENT_CONFIG_MAP.opus.hp,
-      position: AGENT_CONFIG_MAP.opus.startPosition,
-      orientation: AGENT_CONFIG_MAP.opus.startOrientation,
-    },
-    {
-      agentId: 'sonnet' as const,
-      modelId: AGENT_CONFIG_MAP.sonnet.modelId,
-      speed: AGENT_CONFIG_MAP.sonnet.speed,
-      hp: AGENT_CONFIG_MAP.sonnet.hp,
-      position: AGENT_CONFIG_MAP.sonnet.startPosition,
-      orientation: AGENT_CONFIG_MAP.sonnet.startOrientation,
-    },
-    {
-      agentId: 'haiku' as const,
-      modelId: AGENT_CONFIG_MAP.haiku.modelId,
-      speed: AGENT_CONFIG_MAP.haiku.speed,
-      hp: AGENT_CONFIG_MAP.haiku.hp,
-      position: AGENT_CONFIG_MAP.haiku.startPosition,
-      orientation: AGENT_CONFIG_MAP.haiku.startOrientation,
-    },
-  ],
+  agents: Object.entries(AGENT_CONFIG_MAP).map(([agentId, config]) => ({
+    agentId: agentId as keyof typeof AGENT_CONFIG_MAP,
+    modelId: config.modelId,
+    speed: config.speed,
+    hp: config.hp,
+    position: config.startPosition,
+    orientation: config.startOrientation,
+  })),
 };
 
 /**

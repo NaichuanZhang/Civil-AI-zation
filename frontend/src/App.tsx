@@ -5,7 +5,10 @@ import { AgentPanel } from './components/AgentPanel';
 import { LogViewer } from './components/LogViewer';
 import { GameControls } from './components/GameControls';
 import { Settings } from './components/Settings';
-import { AGENT_INITIAL_HP, UI_CONFIG, THEME } from './config';
+import { AGENT_INITIAL_HP, AGENT_STATS, UI_CONFIG, THEME } from './config';
+
+// Get agent IDs dynamically from config
+const AGENT_IDS = Object.keys(AGENT_STATS) as Array<keyof typeof AGENT_STATS>;
 
 export function App() {
   const { state, startGame } = useGameState();
@@ -51,24 +54,24 @@ export function App() {
                   key={agent.agentId}
                   agent={agent}
                   isCurrentTurn={agent.agentId === state.currentTurnAgent}
-                  maxHp={AGENT_INITIAL_HP[agent.agentId] ?? 20}
+                  maxHp={AGENT_INITIAL_HP[agent.agentId as keyof typeof AGENT_INITIAL_HP] ?? 20}
                   debugMode={debugMode}
                 />
               ))
-            : ['opus', 'sonnet', 'haiku'].map((id) => (
+            : AGENT_IDS.map((id) => (
                 <AgentPanel
                   key={id}
                   agent={{
                     agentId: id,
                     position: { x: 0, y: 0 },
-                    hp: AGENT_INITIAL_HP[id] ?? 20,
+                    hp: AGENT_STATS[id].hp,
                     orientation: 'N',
                     status: 'alive',
-                    speed: id === 'haiku' ? 4 : id === 'sonnet' ? 3 : 2,
+                    speed: AGENT_STATS[id].speed,
                     eliminatedAtRound: null,
                   }}
                   isCurrentTurn={false}
-                  maxHp={AGENT_INITIAL_HP[id] ?? 20}
+                  maxHp={AGENT_STATS[id].hp}
                   debugMode={debugMode}
                 />
               ))}
