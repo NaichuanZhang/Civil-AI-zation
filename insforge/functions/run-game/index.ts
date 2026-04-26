@@ -918,6 +918,7 @@ async function runGameLoop(client, gameId, initialState, config) {
         agentId: turnAgent.agentId,
         action: resolvedAction,
         result,
+        reasoning: reasoning || null,
         agents: state.agents.map(toPublicAgent)
       });
       if (result.type === "attack" && result.targetEliminated) {

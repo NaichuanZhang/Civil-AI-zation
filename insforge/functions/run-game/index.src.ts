@@ -306,6 +306,7 @@ async function runGameLoop(
         agentId: turnAgent.agentId,
         action: resolvedAction,
         result,
+        reasoning: reasoning || null,
         agents: state.agents.map(toPublicAgent),
       });
 

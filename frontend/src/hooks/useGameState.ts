@@ -112,13 +112,25 @@ export function useGameState() {
         const agentId = (payload as { agentId: string }).agentId;
         const action = payload.action as EventLogEntry['action'];
         const result = payload.result as EventLogEntry['result'];
+        const reasoning = payload.reasoning as string | null;
         const incoming = payload.agents as GameUIState['agents'];
         const agents = incoming.map((a) =>
           a.agentId === agentId ? { ...a, lastAction: action } : a,
         );
 
-        // Log action and result to agent-specific tab if recording
+        // Log reasoning, action and result to agent-specific tab if recording
         if (recordMode) {
+          // Log reasoning/rationale first
+          if (reasoning) {
+            addLog(
+              agentId as 'opus' | 'sonnet' | 'haiku',
+              'prompt',
+              `Reasoning: ${reasoning}`,
+              { reasoning, action }
+            );
+          }
+
+          // Then log the action
           addLog(
             agentId as 'opus' | 'sonnet' | 'haiku',
             'action',
@@ -126,6 +138,7 @@ export function useGameState() {
             { action, result }
           );
 
+          // Finally log the result
           if (result) {
             addLog(
               agentId as 'opus' | 'sonnet' | 'haiku',
@@ -148,6 +161,7 @@ export function useGameState() {
               agentId,
               action,
               result,
+              reasoning: reasoning || undefined,
             } satisfies EventLogEntry,
           ],
         }));

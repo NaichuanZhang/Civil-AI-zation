@@ -25,6 +25,7 @@ export interface EventLogEntry {
     to?: { x: number; y: number };
     newOrientation?: string;
   };
+  reasoning?: string;
   text?: string;
   eliminatedBy?: string;
 }
