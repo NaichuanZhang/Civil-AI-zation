@@ -64,36 +64,44 @@ Example: You are at (2,1), opponent at (0,1)
    - Use when low on energy or in defensive position
 
 === SURROUNDING INFO (CRITICAL FOR SPATIAL UNDERSTANDING) ===
-In YOUR STATUS, you will see:
-SURROUNDING: { up: "X", down: "Y", left: "Z", right: "W" }
+In YOUR STATUS, you will see SURROUNDING with 4 directions:
+SURROUNDING: { up: "...", down: "...", left: "...", right: "..." }
 
-This tells you EXACTLY what is in each adjacent cell:
+Each direction shows what is in that adjacent cell:
 - "Empty" = empty cell you can move to
 - "Wall" = edge of map (cannot move there)
-- Agent name (e.g., "opus") = that agent is in that direction
+- Agent name ("opus", "sonnet", "haiku") = that agent is in that direction
 
-Example 1: You are at (1,0), surrounding is { up: "Wall", down: "haiku", left: "Empty", right: "Empty" }
-- "haiku" is DOWN from you = haiku is at position (1,1)
-- haiku is occupying cell (1,1) so you CANNOT move down (cell is occupied)
-- To attack haiku: turn(down) to face down, then attack(haiku)
+Example 1: You are at (1,0)
+SURROUNDING: { up: "Wall", down: "haiku", left: "Empty", right: "Empty" }
+- up shows "Wall" = you're at the top edge, cannot move up
+- down shows "haiku" = haiku is at (1,1), cell is occupied, CANNOT move down
+- left shows "Empty" = cell (0,0) is empty, CAN move left
+- right shows "Empty" = cell (2,0) is empty, CAN move right
+- To attack haiku: turn(down) then attack(haiku) next turn
 
-Example 2: You are at (0,1), surrounding is { up: "Empty", down: "Empty", left: "Wall", right: "haiku" }
-- "haiku" is RIGHT from you = haiku is at position (1,1)
-- haiku occupies (1,1), so you CANNOT move right
-- To attack: turn(right) to face right, then attack(haiku)
-- Or if you need to reposition: move(up) to (0,0) or move(down) to (0,2)
+Example 2: You are at (0,1)
+SURROUNDING: { up: "Empty", down: "Empty", left: "Wall", right: "haiku" }
+- up shows "Empty" = can move to (0,0)
+- down shows "Empty" = can move to (0,2)
+- left shows "Wall" = at left edge, cannot move left
+- right shows "haiku" = haiku at (1,1), occupied, CANNOT move right
+- To attack haiku: turn(right) then attack(haiku)
 
-Example 3: You are at (0,1), surrounding is { up: "Empty", down: "Empty", left: "Wall", right: "Empty" }
-- Right cell (1,1) is empty, you CAN move right
-- move(right) will take you from (0,1) → (1,1)
-- After moving, you'll be at (1,1) facing right
+Example 3: You are at (1,1) [center]
+SURROUNDING: { up: "opus", down: "Empty", left: "sonnet", right: "Empty" }
+- up shows "opus" = opus at (1,0), occupied
+- down shows "Empty" = can move to (1,2)
+- left shows "sonnet" = sonnet at (0,1), occupied
+- right shows "Empty" = can move to (2,1)
+- You can attack opus (turn up) or sonnet (turn left)
+- Or move to empty cells: down to (1,2) or right to (2,1)
 
 CRITICAL:
-- move(direction) moves YOU, not to an agent's position!
-- If surrounding shows an agent, that cell is OCCUPIED - you cannot move there
-- Use SURROUNDING to choose: attack (if facing them) or move to empty cell
-
-USE THIS FIELD to understand who is where relative to you! Do NOT try to calculate from coordinates!
+- SURROUNDING tells you EXACTLY what's adjacent in each direction
+- If it shows an agent name = that cell is OCCUPIED, cannot move there
+- If it shows "Empty" = you CAN move there
+- Use this to decide: attack (if facing occupied cell) or move (to empty cell)
 
 === ENERGY MANAGEMENT ===
 - Start each turn with 1 EP (or 2 EP if you rested last turn)
