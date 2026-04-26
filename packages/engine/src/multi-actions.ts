@@ -34,14 +34,11 @@ export function executeMultipleActions(
   for (const action of orderedActions) {
     const currentAgent = currentAgents.find(a => a.agentId === agentId)!;
 
-    // Check if agent has enough EP
-    const actionCost = getActionCost(action);
+    const actionCost = config.actionCosts[action.type];
     if (currentAgent.ep < actionCost) {
-      // Insufficient EP, stop here
       break;
     }
 
-    // Execute the action
     const { agents: newAgents, result } = executeAction(
       agentId,
       action,
@@ -49,18 +46,15 @@ export function executeMultipleActions(
       config,
     );
 
-    // If action was invalid, stop sequence
     if (result.type === 'invalid') {
       results.push(result);
       break;
     }
 
-    // Deduct EP
     currentAgents = updateAgent(newAgents, agentId, { ep: currentAgent.ep - actionCost });
     results.push(result);
     epSpent += actionCost;
 
-    // If rest, stop sequence
     if (action.type === 'rest') {
       break;
     }
@@ -94,13 +88,3 @@ function reorderActions(actions: readonly AgentAction[]): readonly AgentAction[]
   return orderedActions;
 }
 
-function getActionCost(action: AgentAction): number {
-  switch (action.type) {
-    case 'move':
-    case 'turn':
-    case 'attack':
-      return 1;
-    case 'rest':
-      return 0;
-  }
-}

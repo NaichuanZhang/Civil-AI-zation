@@ -77,7 +77,7 @@ describe('validateAttack', () => {
       makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 0 } }),
     ];
-    const result = validateAttack(agents[0]!, 'sonnet', agents);
+    const result = validateAttack(agents[0]!, 'sonnet', agents, config);
     expect(result.valid).toBe(true);
   });
 
@@ -87,7 +87,7 @@ describe('validateAttack', () => {
       makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 0 } }),
     ];
-    const result = validateAttack(agents[0]!, 'sonnet', agents);
+    const result = validateAttack(agents[0]!, 'sonnet', agents, config);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('not in your facing direction');
   });
@@ -98,7 +98,7 @@ describe('validateAttack', () => {
       makeAgent({ agentId: 'sonnet', position: { x: 2, y: 2 } }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 2 } }),
     ];
-    const result = validateAttack(agents[0]!, 'sonnet', agents);
+    const result = validateAttack(agents[0]!, 'sonnet', agents, config);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('not in your facing direction');
   });
@@ -109,7 +109,7 @@ describe('validateAttack', () => {
       makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 }, status: 'eliminated' }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 0 } }),
     ];
-    const result = validateAttack(agents[0]!, 'sonnet', agents);
+    const result = validateAttack(agents[0]!, 'sonnet', agents, config);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('not alive');
   });
@@ -131,7 +131,7 @@ describe('validateAttack', () => {
       makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 0 } }),
     ];
-    const result = validateAttack(agents[0]!, 'sonnet', agents);
+    const result = validateAttack(agents[0]!, 'sonnet', agents, config);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('EP');
   });

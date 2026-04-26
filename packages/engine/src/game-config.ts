@@ -15,10 +15,10 @@ export const HIT_ZONE_MODIFIERS = {
  * Each action consumes energy points (EP)
  */
 export const ACTION_COSTS = {
-  move: 1,    // Moving to adjacent cell
-  turn: 0,    // Rotating to face different direction (free)
-  attack: 2,  // Attacking adjacent target
-  rest: 0,    // Resting to recover energy (free)
+  move: 1,
+  turn: 1,
+  attack: 1,
+  rest: 0,
 } as const;
 
 /**
@@ -52,7 +52,7 @@ export const AGENT_CONFIG_MAP = {
     hp: 25,
     startPosition: { x: 0, y: 2 },
     startOrientation: 'up' as const,
-    maxTokens: 2000,  // Opus gets more tokens for deeper reasoning
+    maxTokens: 500,
   },
   sonnet: {
     modelId: 'openai/gpt-4o-mini',
@@ -115,6 +115,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     orientation: config.startOrientation,
   })),
   chests: CHEST_CONFIG,
+  actionCosts: ACTION_COSTS,
 };
 
 /**

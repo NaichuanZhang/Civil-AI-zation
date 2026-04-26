@@ -26,7 +26,7 @@ export function validateMove(
   if (agent.status === 'eliminated') {
     return { valid: false, reason: 'Agent is eliminated' };
   }
-  if (agent.ep < 1) {
+  if (agent.ep < config.actionCosts.move) {
     return { valid: false, reason: 'Not enough EP' };
   }
   const dest = getAdjacentPosition(agent.position, direction);
@@ -43,11 +43,12 @@ export function validateAttack(
   agent: AgentState,
   targetId: AgentId,
   allAgents: readonly AgentState[],
+  config: GameConfig,
 ): ActionValidation {
   if (agent.status === 'eliminated') {
     return { valid: false, reason: 'Agent is eliminated' };
   }
-  if (agent.ep < 1) {
+  if (agent.ep < config.actionCosts.attack) {
     return { valid: false, reason: 'Not enough EP' };
   }
   if (targetId === agent.agentId) {
@@ -67,11 +68,11 @@ export function validateAttack(
   return { valid: true };
 }
 
-export function validateTurn(agent: AgentState): ActionValidation {
+export function validateTurn(agent: AgentState, config: GameConfig): ActionValidation {
   if (agent.status === 'eliminated') {
     return { valid: false, reason: 'Agent is eliminated' };
   }
-  if (agent.ep < 1) {
+  if (agent.ep < config.actionCosts.turn) {
     return { valid: false, reason: 'Not enough EP' };
   }
   return { valid: true };
@@ -107,7 +108,7 @@ export function executeAction(
       let newAgents = updateAgent(agents, agentId, {
         position: dest,
         orientation: action.direction,
-        ep: agent.ep - 1,
+        ep: agent.ep - config.actionCosts.move,
       });
 
       // Check for chest at destination
@@ -141,7 +142,7 @@ export function executeAction(
     }
 
     case 'attack': {
-      const validation = validateAttack(agent, action.target, agents);
+      const validation = validateAttack(agent, action.target, agents, config);
       if (!validation.valid) {
         return makeInvalidResult(agents, chests, validation.reason!, config);
       }
@@ -155,7 +156,7 @@ export function executeAction(
       const newHp = Math.max(0, target.hp - damage);
       const eliminated = newHp <= 0;
 
-      let newAgents = updateAgent(agents, agentId, { ep: agent.ep - 1 });
+      let newAgents = updateAgent(agents, agentId, { ep: agent.ep - config.actionCosts.attack });
       newAgents = updateAgent(newAgents, action.target, {
         hp: newHp,
         ...(eliminated
@@ -179,14 +180,14 @@ export function executeAction(
     }
 
     case 'turn': {
-      const validation = validateTurn(agent);
+      const validation = validateTurn(agent, config);
       if (!validation.valid) {
         return makeInvalidResult(agents, chests, validation.reason!, config);
       }
       const prev = agent.orientation;
       const newAgents = updateAgent(agents, agentId, {
         orientation: action.direction,
-        ep: agent.ep - 1,
+        ep: agent.ep - config.actionCosts.turn,
       });
       return {
         agents: newAgents,

@@ -129,6 +129,13 @@ export interface ChestConfig {
   readonly maxOnBoard: number;
 }
 
+export interface ActionCosts {
+  readonly move: number;
+  readonly turn: number;
+  readonly attack: number;
+  readonly rest: number;
+}
+
 export interface GameConfig {
   readonly mapWidth: number;
   readonly mapHeight: number;
@@ -140,6 +147,7 @@ export interface GameConfig {
   readonly maxEp: number;
   readonly agents: readonly AgentConfig[];
   readonly chests: ChestConfig;
+  readonly actionCosts: ActionCosts;
 }
 
 export interface GameState {
