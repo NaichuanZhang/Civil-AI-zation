@@ -15,6 +15,7 @@ export interface AgentConfigSchema {
   hp: number;
   startPosition: { x: number; y: number };
   startOrientation: Direction;
+  maxTokens: number;
 }
 
 /**

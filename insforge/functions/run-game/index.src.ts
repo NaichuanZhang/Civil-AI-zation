@@ -2,6 +2,7 @@ import { createClient } from 'npm:@insforge/sdk';
 import {
   DEFAULT_GAME_CONFIG,
   BACKEND_CONFIG,
+  AGENT_CONFIG_MAP,
   createInitialState,
   buildSharedView,
   buildPersonalView,
@@ -283,6 +284,7 @@ async function runGameLoop(
         const tools = buildToolDefinitions(aliveOpponents, validMoveDirections);
 
         const t0 = Date.now();
+        const agentMaxTokens = AGENT_CONFIG_MAP[turnAgent.agentId]?.maxTokens ?? 500;
         const completion = await callLlm(client, {
           model: turnAgent.modelId,
           messages: [
@@ -292,9 +294,9 @@ async function runGameLoop(
           tools,
           tool_choice: 'required',
           temperature: 0.7,
-          maxTokens: 500,
+          maxTokens: agentMaxTokens,
         });
-        console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId})`);
+        console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId}, ${agentMaxTokens} tokens)`);
 
         rawResponse = completion;
         const message = completion.choices?.[0]?.message;

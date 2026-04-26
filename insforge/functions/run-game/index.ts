@@ -29,21 +29,25 @@ var AGENT_CONFIG_MAP = {
     speed: 2,
     hp: 25,
     startPosition: { x: 0, y: 2 },
-    startOrientation: "up"
+    startOrientation: "up",
+    maxTokens: 2e3
+    // Opus gets more tokens for deeper reasoning
   },
   sonnet: {
     modelId: "openai/gpt-4o-mini",
     speed: 3,
     hp: 20,
     startPosition: { x: 2, y: 2 },
-    startOrientation: "left"
+    startOrientation: "left",
+    maxTokens: 500
   },
   haiku: {
     modelId: "openai/gpt-4o-mini",
     speed: 4,
     hp: 15,
     startPosition: { x: 1, y: 0 },
-    startOrientation: "down"
+    startOrientation: "down",
+    maxTokens: 500
   }
 };
 var AGENT_INITIAL_HP = Object.fromEntries(
@@ -1047,6 +1051,7 @@ async function runGameLoop(client, gameId, initialState, config) {
         const userMessage = buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections);
         const tools = buildToolDefinitions(aliveOpponents, validMoveDirections);
         const t0 = Date.now();
+        const agentMaxTokens = AGENT_CONFIG_MAP[turnAgent.agentId]?.maxTokens ?? 500;
         const completion = await callLlm(client, {
           model: turnAgent.modelId,
           messages: [
@@ -1056,9 +1061,9 @@ async function runGameLoop(client, gameId, initialState, config) {
           tools,
           tool_choice: "required",
           temperature: 0.7,
-          maxTokens: 500
+          maxTokens: agentMaxTokens
         });
-        console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId})`);
+        console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId}, ${agentMaxTokens} tokens)`);
         rawResponse = completion;
         const message = completion.choices?.[0]?.message;
         reasoning = message?.content || message?.reasoning_content || "";
