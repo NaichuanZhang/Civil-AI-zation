@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Civil-AI-zation is a turn-based AI arena battle game where three LLM agents compete on a 3x3 grid — opus uses `zai/glm-5-turbo` (Z.AI direct API), sonnet and haiku use `openai/gpt-4o-mini` (InsForge AI proxy). The game is fully automated; spectators watch via a React UI that receives realtime events.
+Civil-AI-zation is a turn-based AI arena battle game where three LLM agents compete on a 3x3 grid. The game is fully automated; spectators watch via a React UI that receives realtime events.
 
 ## Commands
 
@@ -21,11 +21,11 @@ pnpm build                # Build frontend for production
 
 # Edge function workflow (must do all 3 steps after engine or edge function changes)
 pnpm build:edge           # 1. Bundle engine + edge function source → index.ts
-npx @insforge/cli functions deploy run-game   # 2. Deploy run-game
-npx @insforge/cli functions deploy spectate   # 3. Deploy spectate
+pnpm deploy:functions     # 2. Deploy both run-game and spectate
 
 # Database
 npx @insforge/cli db import migrations/NNN_name.sql  # Apply a single migration
+pnpm db:migrate                                       # Apply all pending migrations
 npx @insforge/cli db tables                           # List tables
 npx @insforge/cli db query "SELECT ..."               # Run raw SQL
 
@@ -59,7 +59,7 @@ types.ts → config-schema.ts → game-config.ts
          → turn.ts
          → round.ts (uses turn, actions, state, memory)
          → win-condition.ts
-         → agent-prompt.ts (uses state, types)
+         → agent-prompt.ts (uses state, game-config)
          → summary.ts
          → index.ts (barrel export)
 ```
@@ -69,7 +69,9 @@ Key patterns:
 - **`executeAction()`** validates then executes. Invalid actions automatically fall back to rest.
 - **`updateAgent()`** returns a new array with one agent replaced (immutable update pattern used everywhere).
 - Agents can only attack the cell they're **facing** — `validateAttack` checks `getAdjacentPosition(agent.position, agent.orientation)`.
-- **Memory**: agents get entries for their own actions and when they are attacked. Capped at 10 entries via `appendMemory`. `buildTargetMemoryEntry` creates the incoming-attack memory.
+- **Directions** are `'up' | 'down' | 'left' | 'right'` (not N/S/E/W). Coordinate system: (0,0) is top-left, X increases right, Y increases down.
+- **Memory**: agents get entries for their own actions and when they are attacked. Capped via `memoryCap` in config. `buildTargetMemoryEntry` creates the incoming-attack memory.
+- **All game constants** (action costs, damage modifiers, agent stats, EP values) are centralized in `game-config.ts`. See `CONFIGURATION.md` for a full reference.
 
 ### Edge Functions
 
@@ -91,7 +93,7 @@ LLM reasoning text is broadcast in `turn_completed` events as the `reasoning` fi
 
 **`LogContext`** provides a VSCode-style logging system with per-agent tabs (opus, sonnet, haiku, system) and categories (system, prompt, action, result). `useGameState` writes to it via `addLogRef` (ref pattern to avoid stale closures in realtime callbacks). `LogViewer` renders the logs; agent tabs only appear when debug mode is on.
 
-**Debug mode** is a `useState` toggle in `App.tsx`, passed as `debugMode` prop to `AgentPanel` (shows EP, last action) and `LogViewer` (shows agent-specific tabs).
+**Debug mode** is a `useState` toggle in `App.tsx`, controlled via the `Settings` component. It is passed as `debugMode` prop to `AgentPanel` (shows EP, last action) and `LogViewer` (shows agent-specific tabs).
 
 **`lastAction`** on agents is derived client-side — the `turn_completed` handler merges the action onto the acting agent since the backend doesn't persist it on agent state.
 
@@ -101,12 +103,15 @@ LLM reasoning text is broadcast in `turn_completed` events as the `reasoning` fi
 
 ## Game Rules
 
-- **Grid**: 3×3, configurable in `DEFAULT_GAME_CONFIG`
-- **Agents**: opus (speed 2, HP 25), sonnet (speed 3, HP 20), haiku (speed 4, HP 15)
-- **Actions**: move(dir) [1 EP], attack(target) [2 EP, must face target], turn(dir) [0 EP], rest() [0 EP, +1 EP next turn]
-- **Damage**: `floor(5 × modifier)` — front 0.5× (2), side 1.0× (5), back 1.5× (7)
-- **Facing**: "Same direction = Front" means if attack direction equals target facing, it's a front hit
-- **Win**: last standing = elimination, round 30 = highest HP, HP tied = draw
+Game mechanics are configured in `AGENT_CONFIG_MAP`, `ACTION_COSTS`, `HIT_ZONE_MODIFIERS`, and `DEFAULT_GAME_CONFIG` in `packages/engine/src/game-config.ts`. See `CONFIGURATION.md` for the complete reference.
+
+Key mechanics:
+- **Grid**: configurable dimensions in `DEFAULT_GAME_CONFIG`
+- **Turn order**: agents sorted by speed (highest first)
+- **Actions**: move, attack, turn, rest — EP costs in `ACTION_COSTS`
+- **Combat**: damage = `floor(baseAttackDamage × hitZoneModifier)` — modifiers in `HIT_ZONE_MODIFIERS`
+- **Facing**: same direction = front hit, opposite = back hit, else side hit (see `orientation.ts`)
+- **Win**: last standing = elimination, max rounds = highest HP, tied HP = draw
 
 ## InsForge
 
