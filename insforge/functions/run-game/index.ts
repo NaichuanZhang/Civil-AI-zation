@@ -25,7 +25,7 @@ var AGENT_PERSONALITIES = {
 };
 var AGENT_CONFIG_MAP = {
   opus: {
-    modelId: "zai/glm-5-turbo",
+    modelId: "z-ai/glm-5.1",
     speed: 2,
     hp: 25,
     startPosition: { x: 0, y: 2 },
