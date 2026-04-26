@@ -61,6 +61,25 @@ Example: You are at (2,1), opponent at (0,1)
    - Cost: 0 EP
    - Use when low on energy or in defensive position
 
+=== SURROUNDING INFO (CRITICAL FOR SPATIAL UNDERSTANDING) ===
+In YOUR STATUS, you will see:
+SURROUNDING: { up: "X", down: "Y", left: "Z", right: "W" }
+
+This tells you EXACTLY what is in each adjacent cell:
+- "Empty" = empty cell you can move to
+- "Wall" = edge of map (cannot move there)
+- Agent name (e.g., "opus") = that agent is in that direction
+
+Example 1: You are at (1,0), surrounding is { up: "Wall", down: "haiku", left: "Empty", right: "Empty" }
+- "haiku" is DOWN from you = haiku is at position (1,1)
+- To attack haiku: You must face down, then attack(haiku)
+
+Example 2: You are at (2,1), surrounding is { up: "Empty", down: "Empty", left: "Empty", right: "Wall" }
+- All adjacent cells are empty or walls
+- No one to attack until you move closer
+
+USE THIS FIELD to understand who is where relative to you! Do NOT try to calculate from coordinates!
+
 === ENERGY MANAGEMENT ===
 - Start each turn with 1 EP (or 2 EP if you rested last turn)
 - You MUST have enough EP to perform an action
@@ -121,6 +140,7 @@ export function buildUserMessage(
       : 'None';
 
   const adjacentInfo = buildAdjacentInfo(personalView, aliveAgents, sharedView.mapWidth, sharedView.mapHeight);
+  const surroundingInfo = buildSurroundingInfo(personalView, aliveAgents, sharedView.mapWidth, sharedView.mapHeight);
 
   const memoryLines =
     personalView.memory.length > 0
@@ -143,6 +163,7 @@ ${eliminatedLines}
 
 YOUR STATUS:
 - HP: ${personalView.hp}, EP: ${personalView.ep}, Position: (${personalView.position.x},${personalView.position.y}), Facing: ${DIRECTION_NAMES[personalView.orientation]}
+- SURROUNDING: ${surroundingInfo}
 - Adjacent cells: ${adjacentInfo}
 - Valid moves: ${validMoveDirections.length > 0 ? validMoveDirections.map((d) => `${d} (${DIRECTION_NAMES[d]})`).join(', ') : 'None — you are boxed in'}
 - ${buildAttackTargetInfo(personalView, aliveAgents, sharedView.mapWidth, sharedView.mapHeight)}
@@ -321,6 +342,40 @@ function buildGridVisual(
     lines.push(row.trimEnd());
   }
   return lines.join('\n');
+}
+
+function buildSurroundingInfo(
+  personal: PersonalAgentView,
+  aliveAgents: readonly AgentState[],
+  width: number,
+  height: number,
+): string {
+  const dirs = ['up', 'down', 'left', 'right'] as const;
+  const deltas: Record<string, { dx: number; dy: number }> = {
+    up: { dx: 0, dy: -1 },
+    down: { dx: 0, dy: 1 },
+    right: { dx: 1, dy: 0 },
+    left: { dx: -1, dy: 0 },
+  };
+
+  const surrounding: Record<string, string> = {};
+
+  for (const d of dirs) {
+    const delta = deltas[d]!;
+    const nx = personal.position.x + delta.dx;
+    const ny = personal.position.y + delta.dy;
+
+    if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
+      surrounding[d] = 'Wall';
+    } else {
+      const occupant = aliveAgents.find(
+        (a) => a.status === 'alive' && a.agentId !== personal.agentId && a.position.x === nx && a.position.y === ny,
+      );
+      surrounding[d] = occupant ? occupant.agentId : 'Empty';
+    }
+  }
+
+  return `{ up: "${surrounding.up}", down: "${surrounding.down}", left: "${surrounding.left}", right: "${surrounding.right}" }`;
 }
 
 function buildAdjacentInfo(
