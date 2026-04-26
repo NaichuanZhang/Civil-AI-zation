@@ -1,0 +1,80 @@
+import { useGameState } from './hooks/useGameState';
+import { Grid } from './components/Grid';
+import { AgentPanel } from './components/AgentPanel';
+import { EventLog } from './components/EventLog';
+import { GameControls } from './components/GameControls';
+
+const INITIAL_HP: Record<string, number> = {
+  opus: 25,
+  sonnet: 20,
+  haiku: 15,
+};
+
+export function App() {
+  const { state, startGame } = useGameState();
+
+  return (
+    <div
+      style={{
+        maxWidth: 900,
+        margin: '0 auto',
+        padding: 24,
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        backgroundColor: '#0f172a',
+        minHeight: '100vh',
+        color: '#e2e8f0',
+      }}
+    >
+      <h1 style={{ fontSize: 28, fontWeight: 'bold', margin: '0 0 4px 0', color: '#f1f5f9' }}>
+        Civil-AI-zation
+      </h1>
+      <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 16px 0' }}>
+        Turn-based AI arena battle
+      </p>
+
+      <GameControls
+        status={state.status}
+        round={state.round}
+        result={state.result}
+        onStartGame={startGame}
+      />
+
+      <div style={{ display: 'flex', gap: 24, marginTop: 16 }}>
+        <div>
+          <Grid agents={state.agents} currentTurnAgent={state.currentTurnAgent} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+          {state.agents.length > 0
+            ? state.agents.map((agent) => (
+                <AgentPanel
+                  key={agent.agentId}
+                  agent={agent}
+                  isCurrentTurn={agent.agentId === state.currentTurnAgent}
+                  maxHp={INITIAL_HP[agent.agentId] ?? 20}
+                />
+              ))
+            : ['opus', 'sonnet', 'haiku'].map((id) => (
+                <AgentPanel
+                  key={id}
+                  agent={{
+                    agentId: id,
+                    position: { x: 0, y: 0 },
+                    hp: INITIAL_HP[id] ?? 20,
+                    orientation: 'N',
+                    status: 'alive',
+                    speed: id === 'haiku' ? 4 : id === 'sonnet' ? 3 : 2,
+                    eliminatedAtRound: null,
+                  }}
+                  isCurrentTurn={false}
+                  maxHp={INITIAL_HP[id] ?? 20}
+                />
+              ))}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <EventLog entries={state.eventLog} />
+      </div>
+    </div>
+  );
+}

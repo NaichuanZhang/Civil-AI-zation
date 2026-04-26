@@ -1,0 +1,22 @@
+{
+  "name": "civil-ai-zation",
+  "private": true,
+  "scripts": {
+    "test": "pnpm --filter @civil-ai-zation/engine test",
+    "test:coverage": "pnpm --filter @civil-ai-zation/engine test:coverage",
+    "dev": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build",
+    "build:edge": "esbuild insforge/functions/run-game/index.src.ts --bundle --format=esm --platform=neutral --external:npm:@insforge/sdk --outfile=insforge/functions/run-game/index.ts",
+    "deploy:functions": "npx @insforge/cli functions deploy run-game && npx @insforge/cli functions deploy spectate",
+    "db:migrate": "npx @insforge/cli db migrations up --all"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.5",
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  }
+}

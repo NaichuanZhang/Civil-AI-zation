@@ -1,3 +1,16 @@
+# Build & Dependencies
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Playwright
+.playwright-mcp/
 
 # InsForge & AI agent skills
 .insforge
