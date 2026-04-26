@@ -33,7 +33,12 @@ export function LogProvider({ children }: { children: ReactNode }) {
     message: string,
     data?: unknown
   ) => {
-    if (!enabledAgents.has(type) && type !== 'system') return;
+    console.log('[LogContext.addLog] type:', type, 'category:', category, 'enabled:', enabledAgents.has(type));
+
+    if (!enabledAgents.has(type) && type !== 'system') {
+      console.log('[LogContext.addLog] Agent not enabled, skipping');
+      return;
+    }
 
     const entry: LogEntry = {
       timestamp: Date.now(),
@@ -43,6 +48,7 @@ export function LogProvider({ children }: { children: ReactNode }) {
       data,
     };
 
+    console.log('[LogContext.addLog] Adding log entry:', entry);
     setLogs((prev) => [...prev, entry]);
   }, [enabledAgents]);
 

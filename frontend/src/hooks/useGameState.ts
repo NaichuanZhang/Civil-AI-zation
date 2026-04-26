@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { insforge } from '../insforge';
 import { useLog } from '../contexts/LogContext';
 import type { GameUIState, EventLogEntry } from '../types';
@@ -15,7 +15,13 @@ const INITIAL_STATE: GameUIState = {
 
 export function useGameState() {
   const [state, setState] = useState<GameUIState>(INITIAL_STATE);
-  const { addLog, recordMode } = useLog();
+  const { addLog } = useLog();
+  const addLogRef = useRef(addLog);
+
+  // Keep ref up to date
+  useEffect(() => {
+    addLogRef.current = addLog;
+  }, [addLog]);
 
   const startGame = useCallback(async () => {
     console.log('[useGameState] Starting game...');
@@ -83,15 +89,14 @@ export function useGameState() {
       insforge.realtime.on('turn_started', (payload: Record<string, unknown>) => {
         const agentId = payload.agentId as string;
 
-        // Log to agent-specific tab if recording
-        if (recordMode) {
-          addLog(
-            agentId as 'opus' | 'sonnet' | 'haiku',
-            'system',
-            `Turn started - ${agentId} is thinking...`,
-            { round: state.round, agentId }
-          );
-        }
+        // Always log to agent-specific tab (addLog checks if agent is enabled)
+        console.log('[turn_started] agentId:', agentId);
+        addLogRef.current(
+          agentId as 'opus' | 'sonnet' | 'haiku',
+          'system',
+          `Turn started - ${agentId} is thinking...`,
+          { round: state.round, agentId }
+        );
 
         setState((s) => ({
           ...s,
@@ -118,35 +123,38 @@ export function useGameState() {
           a.agentId === agentId ? { ...a, lastAction: action } : a,
         );
 
-        // Log reasoning, action and result to agent-specific tab if recording
-        if (recordMode) {
-          // Log reasoning/rationale first
-          if (reasoning) {
-            addLog(
-              agentId as 'opus' | 'sonnet' | 'haiku',
-              'prompt',
-              `Reasoning: ${reasoning}`,
-              { reasoning, action }
-            );
-          }
+        // Always log to agent-specific tab (addLog checks if agent is enabled)
+        console.log('[turn_completed] agentId:', agentId, 'reasoning:', reasoning ? 'present' : 'none');
 
-          // Then log the action
-          addLog(
+        // Log reasoning/rationale first
+        if (reasoning) {
+          console.log('[turn_completed] Adding reasoning log');
+          addLogRef.current(
             agentId as 'opus' | 'sonnet' | 'haiku',
-            'action',
-            `Action: ${action?.type || 'unknown'}${action?.direction ? ' ' + action.direction : ''}${action?.target ? ' → ' + action.target : ''}`,
-            { action, result }
+            'prompt',
+            `Reasoning: ${reasoning}`,
+            { reasoning, action }
           );
+        }
 
-          // Finally log the result
-          if (result) {
-            addLog(
-              agentId as 'opus' | 'sonnet' | 'haiku',
-              'result',
-              `Result: ${result.type}${result.damage ? ` (${result.damage} damage)` : ''}${result.targetEliminated ? ' [ELIMINATED]' : ''}`,
-              result
-            );
-          }
+        // Then log the action
+        console.log('[turn_completed] Adding action log');
+        addLogRef.current(
+          agentId as 'opus' | 'sonnet' | 'haiku',
+          'action',
+          `Action: ${action?.type || 'unknown'}${action?.direction ? ' ' + action.direction : ''}${action?.target ? ' → ' + action.target : ''}`,
+          { action, result }
+        );
+
+        // Finally log the result
+        if (result) {
+          console.log('[turn_completed] Adding result log');
+          addLogRef.current(
+            agentId as 'opus' | 'sonnet' | 'haiku',
+            'result',
+            `Result: ${result.type}${result.damage ? ` (${result.damage} damage)` : ''}${result.targetEliminated ? ' [ELIMINATED]' : ''}`,
+            result
+          );
         }
 
         setState((s) => ({
