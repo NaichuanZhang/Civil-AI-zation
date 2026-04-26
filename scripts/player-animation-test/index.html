@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warrior Cat Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: #F5FEF2; /* Will be updated by JS to match sprite background */
+            border: 5px solid #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        #cat {
+            position: absolute;
+            width: 256px;
+            height: 256px;
+            image-rendering: pixelated;
+            transform-origin: center;
+            transition: transform 0.1s ease;
+        }
+
+        .controls {
+            margin-top: 30px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px 40px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls h2 {
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .controls p {
+            font-size: 16px;
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+
+        .key {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 0 3px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .status {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .status div {
+            margin: 3px 0;
+        }
+
+        #bgColorInfo {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <div class="status">
+            <div>Position: <span id="position">X: 272, Y: 172</span></div>
+            <div>State: <span id="state">Standing</span></div>
+            <div>Direction: <span id="direction">Right</span></div>
+        </div>
+        <div id="bgColorInfo">Detecting background...</div>
+        <img id="cat" src="../../assets/rest_256x256.gif" alt="Warrior Cat">
+    </div>
+
+    <div class="controls">
+        <h2>🎮 Controls</h2>
+        <p>
+            <span class="key">W</span> Move Up &nbsp;|&nbsp;
+            <span class="key">A</span> Move Left &nbsp;|&nbsp;
+            <span class="key">S</span> Move Down &nbsp;|&nbsp;
+            <span class="key">D</span> Move Right
+        </p>
+        <p style="margin-top: 10px;">
+            <span class="key">SPACE</span> Attack
+        </p>
+        <p style="margin-top: 10px; font-size: 14px;">
+            Hold multiple keys to move diagonally!
+        </p>
+    </div>
+
+    <script>
+        // Detect background color from sprite top-left corner
+        function detectBackgroundColor() {
+            const gameContainer = document.getElementById('gameContainer');
+            const bgColorInfo = document.getElementById('bgColorInfo');
+
+            // Create a temporary canvas to read pixel data from the GIF
+            const tempImg = new Image();
+            tempImg.crossOrigin = 'anonymous'; // Handle CORS if needed
+            tempImg.src = '../../assets/rest_256x256.gif';
+
+            tempImg.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = tempImg.width;
+                canvas.height = tempImg.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(tempImg, 0, 0);
+
+                // Get pixel data from top-left corner (0, 0)
+                const pixelData = ctx.getImageData(0, 0, 1, 1).data;
+                const r = pixelData[0];
+                const g = pixelData[1];
+                const b = pixelData[2];
+
+                // Convert to hex
+                const hexColor = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+
+                // Apply background color to game container
+                gameContainer.style.background = hexColor;
+
+                // Display detected color info
+                bgColorInfo.textContent = `BG: ${hexColor.toUpperCase()} (RGB: ${r}, ${g}, ${b})`;
+
+                console.log(`Detected background color: ${hexColor.toUpperCase()} from sprite top-left corner`);
+            };
+
+            tempImg.onerror = function() {
+                console.error('Failed to load sprite for background detection');
+                bgColorInfo.textContent = 'BG: Detection failed';
+            };
+        }
+
+        // Detect background on page load
+        detectBackgroundColor();
+
+        // Game state
+        const cat = document.getElementById('cat');
+        const positionDisplay = document.getElementById('position');
+        const stateDisplay = document.getElementById('state');
+        const directionDisplay = document.getElementById('direction');
+
+        // Cat properties
+        const catState = {
+            x: 272,  // Center x (800 - 256) / 2
+            y: 172,  // Center y (600 - 256) / 2
+            speed: 3,
+            isMoving: false,
+            isAttacking: false,
+            direction: 'right', // 'left' or 'right'
+            facingLeft: false
+        };
+
+        // Keyboard state
+        const keys = {
+            w: false,
+            a: false,
+            s: false,
+            d: false,
+            space: false
+        };
+
+        // Animation images (relative to HTML file location)
+        const animations = {
+            standing: '../../assets/rest_256x256.gif',
+            moving: '../../assets/move_256x256.gif',
+            attacking: '../../assets/attack_256x256.gif'
+        };
+
+        // Attack animation timer
+        let attackTimer = null;
+        const ATTACK_DURATION = 1000; // 10 frames * 100ms = 1000ms
+
+        // Rest/Move animation info
+        const REST_FRAMES = 18;   // 10 frames palindrome = 18 total
+        const MOVE_FRAMES = 18;   // 10 frames palindrome = 18 total
+        const ATTACK_FRAMES = 10; // 10 frames no palindrome
+
+        // Trigger attack animation
+        function triggerAttack() {
+            if (catState.isAttacking) return; // Already attacking
+
+            catState.isAttacking = true;
+            cat.src = animations.attacking;
+
+            // Clear any existing timer
+            if (attackTimer) clearTimeout(attackTimer);
+
+            // Return to previous state after attack animation completes
+            attackTimer = setTimeout(() => {
+                catState.isAttacking = false;
+                // Return to appropriate animation
+                cat.src = catState.isMoving ? animations.moving : animations.standing;
+                attackTimer = null;
+            }, ATTACK_DURATION);
+        }
+
+        // Update cat position and animation
+        function updateCat() {
+            // Don't allow movement during attack
+            if (catState.isAttacking) {
+                // Apply position and flip (keep facing direction during attack)
+                cat.style.left = catState.x + 'px';
+                cat.style.top = catState.y + 'px';
+                cat.style.transform = catState.facingLeft ? 'scaleX(-1)' : 'scaleX(1)';
+
+                // Update UI
+                positionDisplay.textContent = `X: ${Math.round(catState.x)}, Y: ${Math.round(catState.y)}`;
+                stateDisplay.textContent = 'Attacking';
+                directionDisplay.textContent = catState.direction.charAt(0).toUpperCase() + catState.direction.slice(1);
+                return;
+            }
+
+            let velocityX = 0;
+            let velocityY = 0;
+
+            // Calculate velocity based on keys
+            if (keys.w) velocityY -= catState.speed;
+            if (keys.s) velocityY += catState.speed;
+            if (keys.a) velocityX -= catState.speed;
+            if (keys.d) velocityX += catState.speed;
+
+            // Check if moving
+            const isMoving = velocityX !== 0 || velocityY !== 0;
+
+            // Update direction based on horizontal movement
+            if (velocityX < 0) {
+                catState.direction = 'left';
+                catState.facingLeft = true;
+            } else if (velocityX > 0) {
+                catState.direction = 'right';
+                catState.facingLeft = false;
+            }
+
+            // Update position with boundary checks
+            catState.x += velocityX;
+            catState.y += velocityY;
+
+            // Clamp position within game container
+            const maxX = 800 - 256;
+            const maxY = 600 - 256;
+            catState.x = Math.max(0, Math.min(catState.x, maxX));
+            catState.y = Math.max(0, Math.min(catState.y, maxY));
+
+            // Update animation state
+            if (isMoving !== catState.isMoving) {
+                catState.isMoving = isMoving;
+                cat.src = isMoving ? animations.moving : animations.standing;
+            }
+
+            // Apply position and flip
+            cat.style.left = catState.x + 'px';
+            cat.style.top = catState.y + 'px';
+            cat.style.transform = catState.facingLeft ? 'scaleX(-1)' : 'scaleX(1)';
+
+            // Update UI
+            positionDisplay.textContent = `X: ${Math.round(catState.x)}, Y: ${Math.round(catState.y)}`;
+            stateDisplay.textContent = isMoving ? 'Moving' : 'Standing';
+            directionDisplay.textContent = catState.direction.charAt(0).toUpperCase() + catState.direction.slice(1);
+        }
+
+        // Game loop
+        function gameLoop() {
+            updateCat();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Keyboard event listeners
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+
+            // Handle space key for attack
+            if (key === ' ') {
+                triggerAttack();
+                e.preventDefault();
+                return;
+            }
+
+            if (key in keys) {
+                keys[key] = true;
+                e.preventDefault(); // Prevent page scrolling
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key in keys) {
+                keys[key] = false;
+                e.preventDefault();
+            }
+        });
+
+        // Handle focus loss (stop movement when window loses focus)
+        window.addEventListener('blur', () => {
+            keys.w = keys.a = keys.s = keys.d = false;
+        });
+
+        // Start game loop
+        gameLoop();
+
+        // Preload animations
+        const preloadMoving = new Image();
+        preloadMoving.src = animations.moving;
+        const preloadAttacking = new Image();
+        preloadAttacking.src = animations.attacking;
+    </script>
+</body>
+</html>
