@@ -126,7 +126,25 @@ export function useGameState() {
         // Always log to agent-specific tab (addLog checks if agent is enabled)
         console.log('[turn_completed] agentId:', agentId, 'reasoning:', reasoning ? 'present' : 'none');
 
-        // Log reasoning/rationale first
+        // Get agent state for position and last action info
+        const agentState = agents.find(a => a.agentId === agentId);
+        const prevAgentState = state.agents.find(a => a.agentId === agentId);
+
+        // Log position and previous action context
+        addLogRef.current(
+          agentId as 'opus' | 'sonnet' | 'haiku',
+          'system',
+          `Position: (${prevAgentState?.position.x}, ${prevAgentState?.position.y}) | Facing: ${prevAgentState?.orientation} | HP: ${prevAgentState?.hp} | EP: ${agentState?.ep}`,
+          {
+            position: prevAgentState?.position,
+            orientation: prevAgentState?.orientation,
+            hp: prevAgentState?.hp,
+            ep: agentState?.ep,
+            lastAction: prevAgentState?.lastAction
+          }
+        );
+
+        // Log reasoning/rationale
         if (reasoning) {
           console.log('[turn_completed] Adding reasoning log');
           addLogRef.current(
@@ -137,7 +155,7 @@ export function useGameState() {
           );
         }
 
-        // Then log the action
+        // Log the action taken
         console.log('[turn_completed] Adding action log');
         addLogRef.current(
           agentId as 'opus' | 'sonnet' | 'haiku',
@@ -146,13 +164,26 @@ export function useGameState() {
           { action, result }
         );
 
-        // Finally log the result
+        // Log the result
         if (result) {
           console.log('[turn_completed] Adding result log');
+
+          // Build detailed result message
+          let resultMsg = `Result: ${result.type}`;
+          if (result.type === 'move' && result.to) {
+            resultMsg += ` → Position: (${result.to.x}, ${result.to.y})`;
+          }
+          if (result.damage) {
+            resultMsg += ` (${result.damage} damage)`;
+          }
+          if (result.targetEliminated) {
+            resultMsg += ' [ELIMINATED]';
+          }
+
           addLogRef.current(
             agentId as 'opus' | 'sonnet' | 'haiku',
             'result',
-            `Result: ${result.type}${result.damage ? ` (${result.damage} damage)` : ''}${result.targetEliminated ? ' [ELIMINATED]' : ''}`,
+            resultMsg,
             result
           );
         }
