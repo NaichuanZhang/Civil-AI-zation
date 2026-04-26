@@ -92,29 +92,35 @@ export function useGameState() {
         // Always log to agent-specific tab (addLog checks if agent is enabled)
         console.log('[turn_started] agentId:', agentId);
 
-        // Get current agent state for logging
-        const currentAgent = state.agents.find(a => a.agentId === agentId);
+        // Use setState callback to access current state (avoids stale closure)
+        setState((s) => {
+          // Get current agent state from the current state, not the captured closure
+          const currentAgent = s.agents.find(a => a.agentId === agentId);
 
-        addLogRef.current(
-          agentId as 'opus' | 'sonnet' | 'haiku',
-          'system',
-          `[R${state.round}] Pos: (${currentAgent?.position.x ?? '?'},${currentAgent?.position.y ?? '?'}) | Face: ${currentAgent?.orientation ?? '?'} | HP: ${currentAgent?.hp ?? 0} | EP: ${currentAgent?.ep ?? 0} | Thinking...`,
-          { round: state.round, agentId, agentState: currentAgent }
-        );
+          // Log with current state data
+          if (currentAgent) {
+            addLogRef.current(
+              agentId as 'opus' | 'sonnet' | 'haiku',
+              'system',
+              `[R${s.round}] Pos: (${currentAgent.position.x},${currentAgent.position.y}) | Face: ${currentAgent.orientation} | HP: ${currentAgent.hp} | EP: ${currentAgent.ep} | Thinking...`,
+              { round: s.round, agentId, agentState: currentAgent }
+            );
+          }
 
-        setState((s) => ({
-          ...s,
-          currentTurnAgent: agentId,
-          eventLog: [
-            ...s.eventLog,
-            {
-              type: 'turn',
-              round: s.round,
-              agentId,
-              text: `${agentId} is thinking...`,
-            } as EventLogEntry,
-          ],
-        }));
+          return {
+            ...s,
+            currentTurnAgent: agentId,
+            eventLog: [
+              ...s.eventLog,
+              {
+                type: 'turn',
+                round: s.round,
+                agentId,
+                text: `${agentId} is thinking...`,
+              } as EventLogEntry,
+            ],
+          };
+        });
       });
 
       insforge.realtime.on('turn_completed', (payload: Record<string, unknown>) => {
@@ -130,74 +136,77 @@ export function useGameState() {
         // Always log to agent-specific tab (addLog checks if agent is enabled)
         console.log('[turn_completed] agentId:', agentId, 'reasoning:', reasoning ? 'present' : 'none');
 
-        // Get final agent state after action (from incoming agents array)
-        const finalAgentState = agents.find(a => a.agentId === agentId);
-        const pos = finalAgentState?.position;
-        const orientation = finalAgentState?.orientation;
-        const hp = finalAgentState?.hp ?? 0;
-        const ep = finalAgentState?.ep ?? 0;
+        // Use setState callback to get current round number
+        setState((s) => {
+          // Get final agent state after action (from incoming agents array)
+          const finalAgentState = agents.find(a => a.agentId === agentId);
+          const pos = finalAgentState?.position;
+          const orientation = finalAgentState?.orientation;
+          const hp = finalAgentState?.hp ?? 0;
+          const ep = finalAgentState?.ep ?? 0;
 
-        // Log reasoning/rationale
-        if (reasoning) {
-          console.log('[turn_completed] Adding reasoning log');
+          // Log reasoning/rationale
+          if (reasoning) {
+            console.log('[turn_completed] Adding reasoning log');
+            addLogRef.current(
+              agentId as 'opus' | 'sonnet' | 'haiku',
+              'prompt',
+              `Reasoning: ${reasoning}`,
+              { reasoning, action }
+            );
+          }
+
+          // Log the action taken
+          console.log('[turn_completed] Adding action log');
           addLogRef.current(
             agentId as 'opus' | 'sonnet' | 'haiku',
-            'prompt',
-            `Reasoning: ${reasoning}`,
-            { reasoning, action }
+            'action',
+            `Action: ${action?.type || 'unknown'}${action?.direction ? ' ' + action.direction : ''}${action?.target ? ' → ' + action.target : ''}`,
+            { action, result }
           );
-        }
 
-        // Log the action taken
-        console.log('[turn_completed] Adding action log');
-        addLogRef.current(
-          agentId as 'opus' | 'sonnet' | 'haiku',
-          'action',
-          `Action: ${action?.type || 'unknown'}${action?.direction ? ' ' + action.direction : ''}${action?.target ? ' → ' + action.target : ''}`,
-          { action, result }
-        );
+          // Log the result with final position
+          if (result) {
+            console.log('[turn_completed] Adding result log');
 
-        // Log the result with final position
-        if (result) {
-          console.log('[turn_completed] Adding result log');
+            // Build detailed result message including final state
+            let resultMsg = `Result: ${result.type}`;
+            if (result.type === 'move' && result.to) {
+              resultMsg += ` → New Pos: (${result.to.x}, ${result.to.y}) | Face: ${orientation ?? '?'}`;
+            }
+            if (result.damage) {
+              resultMsg += ` (${result.damage} damage)`;
+            }
+            if (result.targetEliminated) {
+              resultMsg += ' [ELIMINATED]';
+            }
+            resultMsg += ` | HP: ${hp} | EP: ${ep}`;
 
-          // Build detailed result message including final state
-          let resultMsg = `Result: ${result.type}`;
-          if (result.type === 'move' && result.to) {
-            resultMsg += ` → New Pos: (${result.to.x}, ${result.to.y}) | Face: ${orientation ?? '?'}`;
+            addLogRef.current(
+              agentId as 'opus' | 'sonnet' | 'haiku',
+              'result',
+              resultMsg,
+              { result, finalPosition: pos, finalHp: hp, finalEp: ep }
+            );
           }
-          if (result.damage) {
-            resultMsg += ` (${result.damage} damage)`;
-          }
-          if (result.targetEliminated) {
-            resultMsg += ' [ELIMINATED]';
-          }
-          resultMsg += ` | HP: ${hp} | EP: ${ep}`;
 
-          addLogRef.current(
-            agentId as 'opus' | 'sonnet' | 'haiku',
-            'result',
-            resultMsg,
-            { result, finalPosition: pos, finalHp: hp, finalEp: ep }
-          );
-        }
-
-        setState((s) => ({
-          ...s,
-          agents,
-          currentTurnAgent: null,
-          eventLog: [
-            ...s.eventLog,
-            {
-              type: 'turn',
-              round: s.round,
-              agentId,
-              action,
-              result,
-              reasoning: reasoning || undefined,
-            } satisfies EventLogEntry,
-          ],
-        }));
+          return {
+            ...s,
+            agents,
+            currentTurnAgent: null,
+            eventLog: [
+              ...s.eventLog,
+              {
+                type: 'turn',
+                round: s.round,
+                agentId,
+                action,
+                result,
+                reasoning: reasoning || undefined,
+              } satisfies EventLogEntry,
+            ],
+          };
+        });
       });
 
       insforge.realtime.on('agent_eliminated', (payload: Record<string, unknown>) => {
