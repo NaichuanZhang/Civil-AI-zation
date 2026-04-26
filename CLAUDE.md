@@ -51,7 +51,7 @@ npx @insforge/cli secrets get ANON_KEY
 All functions are pure: state in → new state out. Never mutate. Module dependency order:
 
 ```
-types.ts → config.ts
+types.ts → config-schema.ts → game-config.ts
          → grid.ts → orientation.ts → combat.ts
          → state.ts
          → memory.ts
@@ -103,7 +103,7 @@ LLM reasoning text is broadcast in `turn_completed` events as the `reasoning` fi
 
 - **Grid**: 3×3, configurable in `DEFAULT_GAME_CONFIG`
 - **Agents**: opus (speed 2, HP 25), sonnet (speed 3, HP 20), haiku (speed 4, HP 15)
-- **Actions**: move(dir) [1 EP], attack(target) [1 EP, must face target], turn(dir) [1 EP], rest() [0 EP, +1 EP next turn]
+- **Actions**: move(dir) [1 EP], attack(target) [2 EP, must face target], turn(dir) [0 EP], rest() [0 EP, +1 EP next turn]
 - **Damage**: `floor(5 × modifier)` — front 0.5× (2), side 1.0× (5), back 1.5× (7)
 - **Facing**: "Same direction = Front" means if attack direction equals target facing, it's a front hit
 - **Win**: last standing = elimination, round 30 = highest HP, HP tied = draw
