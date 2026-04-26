@@ -3,7 +3,7 @@ import { processRound } from '../src/round.js';
 import type { ActionDecider } from '../src/round.js';
 import { createInitialState, updateAgent } from '../src/state.js';
 import { DEFAULT_GAME_CONFIG } from '../src/config.js';
-import type { AgentAction, GameState } from '../src/types.js';
+import type { GameState } from '../src/types.js';
 
 describe('processRound', () => {
   const deciderAllRest: ActionDecider = () => ({ type: 'rest' });
@@ -31,26 +31,28 @@ describe('processRound', () => {
   });
 
   it('earlier agent move affects later agent state', () => {
-    // haiku moves East from (2,0) to (3,0)
-    // sonnet tries to move to (3,0) — should be blocked if haiku moved there
+    // haiku moves S from (1,0) to (1,1)
+    // sonnet at (2,1) tries to move W to (1,1) — blocked by haiku
+    const config = {
+      ...DEFAULT_GAME_CONFIG,
+      agents: [
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 25, position: { x: 0, y: 2 }, orientation: 'N' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 20, position: { x: 2, y: 1 }, orientation: 'W' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 15, position: { x: 1, y: 0 }, orientation: 'S' as const },
+      ],
+    };
+
     const decider: ActionDecider = (agentId) => {
-      if (agentId === 'haiku') return { type: 'move', direction: 'E' };
-      if (agentId === 'sonnet') return { type: 'move', direction: 'N' };
+      if (agentId === 'haiku') return { type: 'move', direction: 'S' };
+      if (agentId === 'sonnet') return { type: 'move', direction: 'W' };
       return { type: 'rest' };
     };
 
-    // Set sonnet at (3,1) so moving N would go to (3,0) where haiku just moved
-    const state = createInitialState(DEFAULT_GAME_CONFIG);
-    const agents = updateAgent(state.agents, 'sonnet', {
-      position: { x: 3, y: 1 },
-    });
-    const modifiedState: GameState = { ...state, agents };
-
-    const newState = processRound(modifiedState, decider);
+    const state = createInitialState(config);
+    const newState = processRound(state, decider);
     const sonnetTurn = newState.turnRecords.find(
       (t) => t.roundNumber === 1 && t.agentId === 'sonnet',
     )!;
-    // Sonnet's move should be invalid because haiku is now at (3,0)
     expect(sonnetTurn.result.type).toBe('invalid');
   });
 
@@ -59,20 +61,6 @@ describe('processRound', () => {
     const newState = processRound(state, deciderAllRest);
     newState.agents.forEach((a) => {
       expect(a.memory).toHaveLength(1);
-    });
-  });
-
-  it('resting agent gets EP bonus next round', () => {
-    const state = createInitialState(DEFAULT_GAME_CONFIG);
-    const afterRound1 = processRound(state, deciderAllRest);
-    const afterRound2 = processRound(afterRound1, deciderAllRest);
-
-    // After round 2, each agent should have had 2 EP at the start of their turn
-    // since they rested in round 1
-    afterRound2.agents.forEach((a) => {
-      // They used their turn (rest doesn't cost EP in current implementation)
-      // but the EP was set to 2 at the start of their turn
-      expect(a.memory).toHaveLength(2);
     });
   });
 

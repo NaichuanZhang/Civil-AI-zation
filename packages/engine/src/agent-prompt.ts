@@ -20,15 +20,17 @@ const DIRECTION_NAMES: Record<string, string> = {
 };
 
 export function buildSystemPrompt(agentId: AgentId): string {
-  return `You are playing Civil-AI-zation, a turn-based arena battle game on a 5x5 grid.
+  return `You are playing Civil-AI-zation, a turn-based arena battle game on a 3x3 grid.
 
 RULES:
 - You have 1 EP per turn (2 if you rested last turn). Each action costs 1 EP.
 - move(direction): Move 1 cell N/S/E/W. Sets your facing to that direction.
-- attack(target): Attack an adjacent agent. Damage depends on orientation:
+- attack(target): Attack the agent directly in front of you (the cell you are facing). Damage depends on orientation:
   - Front (target faces you): 2 damage
   - Side (perpendicular): 5 damage
   - Back (target faces away): 7 damage
+  You must be facing the target to attack. Use move to reposition and change facing first.
+- turn(direction): Change your facing direction without moving. Costs 1 EP.
 - rest(): Skip turn, gain +1 EP next turn.
 - You are eliminated if HP reaches 0.
 - Game ends when 1 agent remains or after round 30 (highest HP wins).
@@ -88,6 +90,7 @@ ${eliminatedLines}
 YOUR STATUS:
 - HP: ${personalView.hp}, EP: ${personalView.ep}, Position: (${personalView.position.x},${personalView.position.y}), Facing: ${DIRECTION_NAMES[personalView.orientation]}
 - Adjacent cells: ${adjacentInfo}
+- ${buildAttackTargetInfo(personalView, aliveAgents, sharedView.mapWidth, sharedView.mapHeight)}
 
 YOUR MEMORY:
 ${memoryLines}
@@ -133,6 +136,25 @@ export function buildToolDefinitions(
     {
       type: 'function',
       function: {
+        name: 'turn',
+        description:
+          'Change your facing direction without moving. Costs 1 EP. Use this to face a target before attacking.',
+        parameters: {
+          type: 'object',
+          properties: {
+            direction: {
+              type: 'string',
+              enum: ['N', 'S', 'E', 'W'],
+              description: 'Direction to face',
+            },
+          },
+          required: ['direction'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
         name: 'rest',
         description: 'Rest this turn. Gain +1 EP next turn.',
         parameters: {
@@ -150,7 +172,7 @@ export function buildToolDefinitions(
       function: {
         name: 'attack',
         description:
-          'Attack an adjacent agent. Damage depends on your approach vs their facing.',
+          'Attack the agent directly in front of you (in your facing direction). You must be facing the target.',
         parameters: {
           type: 'object',
           properties: {
@@ -188,6 +210,13 @@ export function parseToolCall(toolCall: {
         const target = args['target'];
         if (target === 'opus' || target === 'sonnet' || target === 'haiku') {
           return { type: 'attack', target };
+        }
+        return { type: 'rest' };
+      }
+      case 'turn': {
+        const turnDir = args['direction'];
+        if (turnDir === 'N' || turnDir === 'S' || turnDir === 'E' || turnDir === 'W') {
+          return { type: 'turn', direction: turnDir };
         }
         return { type: 'rest' };
       }
@@ -251,16 +280,48 @@ function buildAdjacentInfo(
       const delta = deltas[d]!;
       const nx = personal.position.x + delta.dx;
       const ny = personal.position.y + delta.dy;
+      const facingTag = d === personal.orientation ? ' [FACING - can attack here]' : '';
       if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
-        return `${d}=wall`;
+        return `${d}=wall${facingTag}`;
       }
       const occupant = aliveAgents.find(
         (a) => a.status === 'alive' && a.position.x === nx && a.position.y === ny,
       );
       if (occupant) {
-        return `${d}=(${nx},${ny}) ${occupant.agentId}`;
+        return `${d}=(${nx},${ny}) ${occupant.agentId}${facingTag}`;
       }
-      return `${d}=(${nx},${ny}) empty`;
+      return `${d}=(${nx},${ny}) empty${facingTag}`;
     })
     .join(', ');
+}
+
+function buildAttackTargetInfo(
+  personal: PersonalAgentView,
+  aliveAgents: readonly AgentState[],
+  width: number,
+  height: number,
+): string {
+  const deltas: Record<string, { dx: number; dy: number }> = {
+    N: { dx: 0, dy: -1 },
+    S: { dx: 0, dy: 1 },
+    E: { dx: 1, dy: 0 },
+    W: { dx: -1, dy: 0 },
+  };
+  const delta = deltas[personal.orientation]!;
+  const fx = personal.position.x + delta.dx;
+  const fy = personal.position.y + delta.dy;
+
+  if (fx < 0 || fx >= width || fy < 0 || fy >= height) {
+    return `ATTACK TARGET: You are facing a wall (${DIRECTION_NAMES[personal.orientation]}). You cannot attack. Use turn(direction) to face a different direction, or move.`;
+  }
+
+  const target = aliveAgents.find(
+    (a) => a.status === 'alive' && a.agentId !== personal.agentId && a.position.x === fx && a.position.y === fy,
+  );
+
+  if (target) {
+    return `ATTACK TARGET: You can attack ${target.agentId} at (${fx},${fy}) — they are directly in front of you.`;
+  }
+
+  return `ATTACK TARGET: Cell (${fx},${fy}) in front of you is empty. No one to attack. Use turn(direction) to change facing, or move closer.`;
 }

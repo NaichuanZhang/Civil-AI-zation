@@ -42,7 +42,7 @@ describe('createInitialState', () => {
 
   it('sets correct positions and orientations', () => {
     const opus = state.agents.find((a) => a.agentId === 'opus')!;
-    expect(opus.position).toEqual({ x: 0, y: 0 });
+    expect(opus.position).toEqual({ x: 0, y: 2 });
     expect(opus.orientation).toBe('N');
   });
 
@@ -101,8 +101,8 @@ describe('buildSharedView', () => {
     const view = buildSharedView(state);
 
     expect(view.round).toBe(0);
-    expect(view.mapWidth).toBe(5);
-    expect(view.mapHeight).toBe(5);
+    expect(view.mapWidth).toBe(3);
+    expect(view.mapHeight).toBe(3);
     expect(view.agents).toHaveLength(3);
     view.agents.forEach((a) => {
       expect(a).toHaveProperty('agentId');
@@ -142,7 +142,7 @@ describe('buildPersonalView', () => {
     expect(view.hp).toBe(25);
     expect(view.ep).toBe(1);
     expect(view.memory).toEqual([]);
-    expect(view.position).toEqual({ x: 0, y: 0 });
+    expect(view.position).toEqual({ x: 0, y: 2 });
     expect(view.orientation).toBe('N');
   });
 });

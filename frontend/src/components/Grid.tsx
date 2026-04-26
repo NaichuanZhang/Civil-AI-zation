@@ -16,12 +16,13 @@ const DIR_ARROWS: Record<string, string> = {
 interface GridProps {
   agents: AgentUIState[];
   currentTurnAgent: string | null;
+  gridSize?: number;
 }
 
-export function Grid({ agents, currentTurnAgent }: GridProps) {
+export function Grid({ agents, currentTurnAgent, gridSize = 3 }: GridProps) {
   const cells = [];
-  for (let y = 0; y < 5; y++) {
-    for (let x = 0; x < 5; x++) {
+  for (let y = 0; y < gridSize; y++) {
+    for (let x = 0; x < gridSize; x++) {
       const agent = agents.find(
         (a) => a.status === 'alive' && a.position.x === x && a.position.y === y,
       );
@@ -85,8 +86,8 @@ export function Grid({ agents, currentTurnAgent }: GridProps) {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(5, 72px)',
-        gridTemplateRows: 'repeat(5, 72px)',
+        gridTemplateColumns: `repeat(${gridSize}, 72px)`,
+        gridTemplateRows: `repeat(${gridSize}, 72px)`,
         gap: 1,
         backgroundColor: '#0f172a',
         border: '2px solid #334155',

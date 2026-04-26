@@ -7,8 +7,8 @@ const AGENT_COLORS: Record<string, string> = {
 };
 
 const AGENT_MODELS: Record<string, string> = {
-  opus: 'Claude Sonnet 4.5',
-  sonnet: 'DeepSeek v3.2',
+  opus: 'GPT-4o Mini',
+  sonnet: 'GPT-4o Mini',
   haiku: 'GPT-4o Mini',
 };
 

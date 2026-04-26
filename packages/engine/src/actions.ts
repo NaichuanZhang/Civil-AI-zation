@@ -8,7 +8,6 @@ import type {
 } from './types.js';
 import { isInBounds, getAdjacentPosition, isPositionOccupied } from './grid.js';
 import { calculateDamage } from './combat.js';
-import { isAdjacent } from './grid.js';
 import { updateAgent } from './state.js';
 
 export interface ActionValidation {
@@ -59,8 +58,19 @@ export function validateAttack(
   if (target.status !== 'alive') {
     return { valid: false, reason: `Target ${targetId} is not alive` };
   }
-  if (!isAdjacent(agent.position, target.position)) {
-    return { valid: false, reason: `Target ${targetId} is not adjacent` };
+  const facingPos = getAdjacentPosition(agent.position, agent.orientation);
+  if (target.position.x !== facingPos.x || target.position.y !== facingPos.y) {
+    return { valid: false, reason: `Target ${targetId} is not in your facing direction` };
+  }
+  return { valid: true };
+}
+
+export function validateTurn(agent: AgentState): ActionValidation {
+  if (agent.status === 'eliminated') {
+    return { valid: false, reason: 'Agent is eliminated' };
+  }
+  if (agent.ep < 1) {
+    return { valid: false, reason: 'Not enough EP' };
   }
   return { valid: true };
 }
@@ -136,6 +146,26 @@ export function executeAction(
           targetHpBefore: target.hp,
           targetHpAfter: newHp,
           targetEliminated: eliminated,
+        },
+      };
+    }
+
+    case 'turn': {
+      const validation = validateTurn(agent);
+      if (!validation.valid) {
+        return makeInvalidResult(agents, validation.reason!, config);
+      }
+      const prev = agent.orientation;
+      const newAgents = updateAgent(agents, agentId, {
+        orientation: action.direction,
+        ep: agent.ep - 1,
+      });
+      return {
+        agents: newAgents,
+        result: {
+          type: 'turn',
+          previousOrientation: prev,
+          newOrientation: action.direction,
         },
       };
     }

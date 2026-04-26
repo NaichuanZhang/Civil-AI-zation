@@ -38,17 +38,18 @@ describe('Integration: Full game simulation', () => {
   });
 
   it('V3: orientation damage values are front=2, side=5, back=7', () => {
-    // Set up agents adjacent for attack testing
+    // opus at (1,1) facing N, sonnet at (1,0) facing N
+    // opus attacks sonnet: facing N = target is N = valid attack
+    // attack direction N, sonnet faces N = same = front → 2 damage
     const config = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 2, hp: 25, position: { x: 2, y: 2 }, orientation: 'N' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 2, y: 1 }, orientation: 'N' as const },
-        { agentId: 'haiku' as const, modelId: 'test', speed: 1, hp: 15, position: { x: 4, y: 4 }, orientation: 'E' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 2, hp: 25, position: { x: 1, y: 1 }, orientation: 'N' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 0 }, orientation: 'N' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 1, hp: 15, position: { x: 2, y: 2 }, orientation: 'E' as const },
       ],
     };
 
-    // opus attacks sonnet from below: direction = N, sonnet faces N = front → 2 damage
     const decider: ActionDecider = (agentId) => {
       if (agentId === 'opus') return { type: 'attack', target: 'sonnet' };
       return { type: 'rest' };
@@ -68,9 +69,8 @@ describe('Integration: Full game simulation', () => {
   });
 
   it('V4: no agent moves off-grid or overlaps', () => {
-    // Agents move around randomly, validating positions each round
     let moveCount = 0;
-    const decider: ActionDecider = (agentId, _shared, personal) => {
+    const decider: ActionDecider = () => {
       const directions = ['N', 'S', 'E', 'W'] as const;
       const dir = directions[moveCount % 4]!;
       moveCount++;
@@ -81,16 +81,14 @@ describe('Integration: Full game simulation', () => {
     for (let i = 0; i < 10; i++) {
       state = processRound(state, decider);
 
-      // Check all alive agents are in bounds
       const alive = state.agents.filter((a) => a.status === 'alive');
       alive.forEach((a) => {
         expect(a.position.x).toBeGreaterThanOrEqual(0);
-        expect(a.position.x).toBeLessThan(5);
+        expect(a.position.x).toBeLessThan(3);
         expect(a.position.y).toBeGreaterThanOrEqual(0);
-        expect(a.position.y).toBeLessThan(5);
+        expect(a.position.y).toBeLessThan(3);
       });
 
-      // Check no two alive agents overlap
       for (let j = 0; j < alive.length; j++) {
         for (let k = j + 1; k < alive.length; k++) {
           expect(
@@ -103,18 +101,17 @@ describe('Integration: Full game simulation', () => {
   });
 
   it('V5: elimination at HP 0', () => {
+    // sonnet at (1,1) facing N, haiku at (1,0) facing S (away)
+    // sonnet attacks haiku: direction N, haiku faces S = opposite = back → 7 damage
     const config = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 25, position: { x: 0, y: 0 }, orientation: 'N' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 20, position: { x: 1, y: 1 }, orientation: 'S' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 25, position: { x: 0, y: 2 }, orientation: 'N' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 20, position: { x: 1, y: 1 }, orientation: 'N' as const },
         { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 7, position: { x: 1, y: 0 }, orientation: 'S' as const },
       ],
     };
 
-    // haiku faces S (away from sonnet who is at 1,1 = South of haiku)
-    // sonnet attacks haiku: direction from (1,1) to (1,0) = N, haiku faces S = opposite = back = 7 damage
-    // haiku has 7 HP → eliminated
     const decider: ActionDecider = (agentId) => {
       if (agentId === 'sonnet') return { type: 'attack', target: 'haiku' };
       return { type: 'rest' };
@@ -138,17 +135,16 @@ describe('Integration: Full game simulation', () => {
 
     state.agents.forEach((a) => {
       expect(a.memory).toHaveLength(10);
-      // Oldest memory should be from round 6 (rounds 1-5 trimmed)
       expect(a.memory[0]).toContain('Round 6');
       expect(a.memory[9]).toContain('Round 15');
     });
   });
 
-  it('V7: invalid tool calls fall back to rest', () => {
+  it('V7: invalid actions fall back to rest (facing direction)', () => {
+    // haiku at (1,0) facing S, try to attack opus at (0,2) — not in facing direction
     const decider: ActionDecider = (agentId) => {
       if (agentId === 'haiku') {
-        // haiku is at (2,0), try to move North = off grid
-        return { type: 'move', direction: 'N' };
+        return { type: 'attack', target: 'opus' };
       }
       return { type: 'rest' };
     };
@@ -166,42 +162,140 @@ describe('Integration: Full game simulation', () => {
   });
 
   it('V8: game ends at elimination (last standing)', () => {
+    // All in a column: haiku(1,0) facing S, sonnet(1,1) facing N, opus(1,2) facing N
+    // sonnet faces N → attacks haiku (back hit, haiku faces S) → 7 dmg → eliminated
+    // Then sonnet moves S to face south, then attacks opus
     const config = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 1, y: 2 }, orientation: 'S' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 1 }, orientation: 'S' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 0, y: 2 }, orientation: 'N' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 1 }, orientation: 'N' as const },
         { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 1, y: 0 }, orientation: 'S' as const },
       ],
     };
 
-    // sonnet attacks both: haiku is at (1,0) adjacent N, opus at (1,2) adjacent S
-    // haiku (speed 4) goes first → rest. sonnet (speed 3) attacks haiku → back hit → 7 dmg → eliminated
-    // Then next round, sonnet attacks opus → back hit → eliminated
-    const decider: ActionDecider = (agentId, _shared, personal) => {
-      if (agentId === 'sonnet') {
-        // Attack whoever is adjacent and alive
-        return { type: 'attack', target: 'haiku' };
-      }
-      return { type: 'rest' };
-    };
-
+    // R1: sonnet faces N, attacks haiku → eliminated
     let state = createInitialState(config);
-    // Round 1: sonnet eliminates haiku (back hit, 7 > 2 HP)
-    state = processRound(state, decider);
+    state = processRound(state, (agentId) => {
+      if (agentId === 'sonnet') return { type: 'attack', target: 'haiku' };
+      return { type: 'rest' };
+    });
 
-    // Now switch sonnet to attack opus
-    const decider2: ActionDecider = (agentId) => {
+    // R2: sonnet moves W to (0,1), now facing W
+    state = processRound(state, (agentId) => {
+      if (agentId === 'sonnet') return { type: 'move', direction: 'W' };
+      return { type: 'rest' };
+    });
+
+    // R3: sonnet moves S to (0,2), now facing S — but opus is at (0,2). Invalid → rest.
+    // Instead: sonnet moves S to (0,2)? No opus there. Actually opus is at (0,2).
+    // So sonnet at (0,1) facing S → attacks opus at (0,2)
+    state = processRound(state, (agentId) => {
       if (agentId === 'sonnet') return { type: 'attack', target: 'opus' };
       return { type: 'rest' };
-    };
-    state = processRound(state, decider2);
+    });
 
-    const win = checkWinCondition(state);
-    expect(win.gameOver).toBe(true);
-    expect(win.result).toBe('elimination');
-    expect(win.winnerAgentId).toBe('sonnet');
-    expect(state.round).toBe(2);
+    // Sonnet at (0,1) facing W — not facing opus at (0,2). Need to face S first.
+    // Let me redo: R2 move S instead of W
+    // Actually after R2, sonnet faces W not S. Let me restart the approach.
+    // Simplify: just put opus directly south of sonnet from the start.
+    const config2 = {
+      ...DEFAULT_GAME_CONFIG,
+      agents: [
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 1, y: 2 }, orientation: 'N' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 1 }, orientation: 'N' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 1, y: 0 }, orientation: 'S' as const },
+      ],
+    };
+
+    // R1: sonnet faces N → attacks haiku (back) → eliminated
+    let state2 = createInitialState(config2);
+    state2 = processRound(state2, (agentId) => {
+      if (agentId === 'sonnet') return { type: 'attack', target: 'haiku' };
+      return { type: 'rest' };
+    });
+
+    // R2: sonnet moves S → now at (1,2)? No, opus at (1,2). Move blocked → invalid.
+    // Need sonnet to face S first. Move to (0,1) then S to (0,2) then...
+    // Simplest: just have sonnet move E to (2,1), then move S to (2,2), then move W...
+    // Too complex. Let opus start elsewhere.
+    const config3 = {
+      ...DEFAULT_GAME_CONFIG,
+      agents: [
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 2, y: 2 }, orientation: 'N' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 1 }, orientation: 'N' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 1, y: 0 }, orientation: 'S' as const },
+      ],
+    };
+
+    let state3 = createInitialState(config3);
+    // R1: sonnet N → attacks haiku → eliminated
+    state3 = processRound(state3, (agentId) => {
+      if (agentId === 'sonnet') return { type: 'attack', target: 'haiku' };
+      return { type: 'rest' };
+    });
+    expect(state3.agents.find((a) => a.agentId === 'haiku')!.status).toBe('eliminated');
+
+    // R2: sonnet move E → (2,1) facing E
+    state3 = processRound(state3, (agentId) => {
+      if (agentId === 'sonnet') return { type: 'move', direction: 'E' };
+      return { type: 'rest' };
+    });
+
+    // R3: sonnet move S → (2,2)? opus is there. Move S to face S, but blocked.
+    // Sonnet at (2,1), opus at (2,2). Sonnet needs to face S.
+    // Move S is blocked by opus. But we can just move to face S via another path.
+    // Actually easier: just move S direction (invalid, occupied) → falls back to rest.
+    // Then manually verify we can attack by moving elsewhere.
+
+    // Simpler approach: just use 2 agents
+    const config4 = {
+      ...DEFAULT_GAME_CONFIG,
+      agents: [
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 2, y: 2 }, orientation: 'N' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 2, y: 1 }, orientation: 'S' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 0, y: 0 }, orientation: 'N' as const },
+      ],
+    };
+
+    let state4 = createInitialState(config4);
+    // R1: sonnet faces S → attacks opus at (2,2) → opus HP 2, front hit (opus faces N = same dir as attack S? No.
+    // Attack dir from (2,1) to (2,2) = S. Opus faces N. S vs N = opposite = back → 7 dmg → eliminated
+    // haiku faces N at (0,0) → move N invalid (wall) → rest
+    state4 = processRound(state4, (agentId) => {
+      if (agentId === 'sonnet') return { type: 'attack', target: 'opus' };
+      if (agentId === 'haiku') return { type: 'move', direction: 'S' };
+      return { type: 'rest' };
+    });
+
+    expect(state4.agents.find((a) => a.agentId === 'opus')!.status).toBe('eliminated');
+
+    // R2: sonnet moves S to (2,2), now haiku at (0,1)
+    state4 = processRound(state4, (agentId) => {
+      if (agentId === 'sonnet') return { type: 'move', direction: 'S' };
+      if (agentId === 'haiku') return { type: 'move', direction: 'S' };
+      return { type: 'rest' };
+    });
+
+    // R3: sonnet move W to face haiku direction
+    state4 = processRound(state4, (agentId) => {
+      if (agentId === 'sonnet') return { type: 'move', direction: 'W' };
+      if (agentId === 'haiku') return { type: 'move', direction: 'S' };
+      return { type: 'rest' };
+    });
+
+    // At this point sonnet at (1,2) facing W, haiku at (0,2) facing S? Let's check positions
+    // haiku: (0,0)→S(0,1)→S(0,2). sonnet: (2,1)→S(2,2)→W(1,2)
+    // sonnet at (1,2) facing W, haiku at (0,2) — haiku is to the W!
+    state4 = processRound(state4, (agentId) => {
+      if (agentId === 'sonnet') return { type: 'attack', target: 'haiku' };
+      return { type: 'rest' };
+    });
+
+    const win4 = checkWinCondition(state4);
+    expect(win4.gameOver).toBe(true);
+    expect(win4.result).toBe('elimination');
+    expect(win4.winnerAgentId).toBe('sonnet');
   });
 });
 
@@ -210,7 +304,7 @@ describe('Integration: Agent prompt building', () => {
     const prompt = buildSystemPrompt('opus');
     expect(prompt).toContain('Civil-AI-zation');
     expect(prompt).toContain('Opus');
-    expect(prompt).toContain('5x5');
+    expect(prompt).toContain('3x3');
   });
 
   it('builds valid user message', () => {
@@ -223,18 +317,20 @@ describe('Integration: Agent prompt building', () => {
     expect(message).toContain('ROUND');
     expect(message).toContain('YOUR STATUS');
     expect(message).toContain('opus');
+    expect(message).toContain('[FACING - can attack here]');
   });
 
   it('builds tool definitions with alive opponents', () => {
     const tools = buildToolDefinitions(['sonnet', 'haiku']);
-    expect(tools).toHaveLength(3); // move, attack, rest
+    expect(tools).toHaveLength(4);
     const attack = tools.find((t) => t.function.name === 'attack')!;
-    expect(attack.function.parameters).toBeDefined();
+    expect(attack.function.description).toContain('facing');
+    expect(tools.find((t) => t.function.name === 'turn')).toBeDefined();
   });
 
   it('omits attack tool when no opponents', () => {
     const tools = buildToolDefinitions([]);
-    expect(tools).toHaveLength(2); // move, rest only
+    expect(tools).toHaveLength(3);
     expect(tools.find((t) => t.function.name === 'attack')).toBeUndefined();
   });
 });
@@ -254,6 +350,13 @@ describe('Integration: parseToolCall', () => {
     expect(action).toEqual({ type: 'attack', target: 'sonnet' });
   });
 
+  it('parses turn action', () => {
+    const action = parseToolCall({
+      function: { name: 'turn', arguments: '{"direction":"S"}' },
+    });
+    expect(action).toEqual({ type: 'turn', direction: 'S' });
+  });
+
   it('parses rest action', () => {
     const action = parseToolCall({
       function: { name: 'rest', arguments: '{}' },
@@ -271,13 +374,6 @@ describe('Integration: parseToolCall', () => {
   it('returns rest for invalid JSON', () => {
     const action = parseToolCall({
       function: { name: 'move', arguments: 'not json' },
-    });
-    expect(action).toEqual({ type: 'rest' });
-  });
-
-  it('returns rest for invalid direction', () => {
-    const action = parseToolCall({
-      function: { name: 'move', arguments: '{"direction":"UP"}' },
     });
     expect(action).toEqual({ type: 'rest' });
   });

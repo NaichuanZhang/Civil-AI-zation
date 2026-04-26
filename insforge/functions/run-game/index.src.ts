@@ -145,6 +145,7 @@ async function runGameLoop(
       const prevTurns = state.turnRecords.filter((t) => t.roundNumber === round - 1);
       try {
         const { system, user } = buildSummaryPrompt(round - 1, prevTurns, state.agents);
+        const tSummary = Date.now();
         const completion = await client.ai.chat.completions.create({
           model: SUMMARY_MODEL,
           messages: [
@@ -154,6 +155,7 @@ async function runGameLoop(
           temperature: 0.8,
           maxTokens: 200,
         });
+        console.log(`[R${round}][summary] LLM call: ${Date.now() - tSummary}ms (${SUMMARY_MODEL})`);
         const summaryText = completion.choices?.[0]?.message?.content ?? 'No summary available.';
 
         await client.database.from('round_summaries').insert([{
@@ -211,6 +213,7 @@ async function runGameLoop(
         const userMessage = buildUserMessage(sharedView, personalView, state.agents.filter((a) => a.status === 'alive'));
         const tools = buildToolDefinitions(aliveOpponents);
 
+        const t0 = Date.now();
         const completion = await client.ai.chat.completions.create({
           model: turnAgent.modelId,
           messages: [
@@ -222,6 +225,7 @@ async function runGameLoop(
           temperature: 0.7,
           maxTokens: 500,
         });
+        console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId})`);
 
         rawResponse = completion;
         const message = completion.choices?.[0]?.message;
@@ -279,7 +283,9 @@ async function runGameLoop(
           ? { direction: resolvedAction.direction }
           : resolvedAction.type === 'attack'
             ? { target: resolvedAction.target }
-            : {},
+            : resolvedAction.type === 'turn'
+              ? { direction: resolvedAction.direction }
+              : {},
         result: result as unknown,
         llm_reasoning: reasoning || null,
         raw_llm_response: rawResponse,

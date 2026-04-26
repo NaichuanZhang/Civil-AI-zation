@@ -3,8 +3,8 @@ import { createClient } from "npm:@insforge/sdk";
 
 // insforge/functions/run-game/engine.ts
 var DEFAULT_GAME_CONFIG = {
-  mapWidth: 5,
-  mapHeight: 5,
+  mapWidth: 3,
+  mapHeight: 3,
   maxRounds: 30,
   baseAttackDamage: 5,
   restEpBonus: 1,
@@ -13,27 +13,27 @@ var DEFAULT_GAME_CONFIG = {
   agents: [
     {
       agentId: "opus",
-      modelId: "anthropic/claude-sonnet-4.5",
+      modelId: "openai/gpt-4o-mini",
       speed: 2,
       hp: 25,
-      position: { x: 0, y: 0 },
+      position: { x: 0, y: 2 },
       orientation: "N"
     },
     {
       agentId: "sonnet",
-      modelId: "deepseek/deepseek-v3.2",
+      modelId: "openai/gpt-4o-mini",
       speed: 3,
       hp: 20,
-      position: { x: 4, y: 4 },
-      orientation: "S"
+      position: { x: 2, y: 2 },
+      orientation: "W"
     },
     {
       agentId: "haiku",
       modelId: "openai/gpt-4o-mini",
       speed: 4,
       hp: 15,
-      position: { x: 2, y: 0 },
-      orientation: "E"
+      position: { x: 1, y: 0 },
+      orientation: "S"
     }
   ]
 };
@@ -49,11 +49,6 @@ function isInBounds(pos, width, height) {
 function getAdjacentPosition(pos, dir) {
   const delta = DIRECTION_DELTAS[dir];
   return { x: pos.x + delta.x, y: pos.y + delta.y };
-}
-function isAdjacent(a, b) {
-  const dx = Math.abs(a.x - b.x);
-  const dy = Math.abs(a.y - b.y);
-  return dx + dy === 1;
 }
 function getDirectionBetween(from, to) {
   const dx = to.x - from.x;
@@ -196,6 +191,8 @@ function buildMemoryEntry(round, _agentId, result, _agents) {
       }
       return entry;
     }
+    case "turn":
+      return `Round ${round}: I turned from ${DIRECTION_NAMES[result.previousOrientation]} to face ${DIRECTION_NAMES[result.newOrientation]}.`;
     case "rest":
       return `Round ${round}: I rested. +${result.epBonusNextTurn} EP next turn.`;
     case "invalid":
@@ -235,8 +232,18 @@ function validateAttack(agent, targetId, allAgents) {
   if (target.status !== "alive") {
     return { valid: false, reason: `Target ${targetId} is not alive` };
   }
-  if (!isAdjacent(agent.position, target.position)) {
-    return { valid: false, reason: `Target ${targetId} is not adjacent` };
+  const facingPos = getAdjacentPosition(agent.position, agent.orientation);
+  if (target.position.x !== facingPos.x || target.position.y !== facingPos.y) {
+    return { valid: false, reason: `Target ${targetId} is not in your facing direction` };
+  }
+  return { valid: true };
+}
+function validateTurn(agent) {
+  if (agent.status === "eliminated") {
+    return { valid: false, reason: "Agent is eliminated" };
+  }
+  if (agent.ep < 1) {
+    return { valid: false, reason: "Not enough EP" };
   }
   return { valid: true };
 }
@@ -293,6 +300,25 @@ function executeAction(agentId, action, agents, config) {
           targetHpBefore: target.hp,
           targetHpAfter: newHp,
           targetEliminated: eliminated
+        }
+      };
+    }
+    case "turn": {
+      const validation = validateTurn(agent);
+      if (!validation.valid) {
+        return makeInvalidResult(agents, validation.reason, config);
+      }
+      const prev = agent.orientation;
+      const newAgents = updateAgent(agents, agentId, {
+        orientation: action.direction,
+        ep: agent.ep - 1
+      });
+      return {
+        agents: newAgents,
+        result: {
+          type: "turn",
+          previousOrientation: prev,
+          newOrientation: action.direction
         }
       };
     }
@@ -377,15 +403,17 @@ var DIRECTION_NAMES2 = {
   W: "West"
 };
 function buildSystemPrompt(agentId) {
-  return `You are playing Civil-AI-zation, a turn-based arena battle game on a 5x5 grid.
+  return `You are playing Civil-AI-zation, a turn-based arena battle game on a 3x3 grid.
 
 RULES:
 - You have 1 EP per turn (2 if you rested last turn). Each action costs 1 EP.
 - move(direction): Move 1 cell N/S/E/W. Sets your facing to that direction.
-- attack(target): Attack an adjacent agent. Damage depends on orientation:
+- attack(target): Attack the agent directly in front of you (the cell you are facing). Damage depends on orientation:
   - Front (target faces you): 2 damage
   - Side (perpendicular): 5 damage
   - Back (target faces away): 7 damage
+  You must be facing the target to attack. Use move to reposition and change facing first.
+- turn(direction): Change your facing direction without moving. Costs 1 EP.
 - rest(): Skip turn, gain +1 EP next turn.
 - You are eliminated if HP reaches 0.
 - Game ends when 1 agent remains or after round 30 (highest HP wins).
@@ -423,6 +451,7 @@ ${eliminatedLines}
 YOUR STATUS:
 - HP: ${personalView.hp}, EP: ${personalView.ep}, Position: (${personalView.position.x},${personalView.position.y}), Facing: ${DIRECTION_NAMES2[personalView.orientation]}
 - Adjacent cells: ${adjacentInfo}
+- ${buildAttackTargetInfo(personalView, aliveAgents, sharedView.mapWidth, sharedView.mapHeight)}
 
 YOUR MEMORY:
 ${memoryLines}
@@ -455,6 +484,24 @@ function buildToolDefinitions(aliveOpponents) {
     {
       type: "function",
       function: {
+        name: "turn",
+        description: "Change your facing direction without moving. Costs 1 EP. Use this to face a target before attacking.",
+        parameters: {
+          type: "object",
+          properties: {
+            direction: {
+              type: "string",
+              enum: ["N", "S", "E", "W"],
+              description: "Direction to face"
+            }
+          },
+          required: ["direction"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
         name: "rest",
         description: "Rest this turn. Gain +1 EP next turn.",
         parameters: {
@@ -470,7 +517,7 @@ function buildToolDefinitions(aliveOpponents) {
       type: "function",
       function: {
         name: "attack",
-        description: "Attack an adjacent agent. Damage depends on your approach vs their facing.",
+        description: "Attack the agent directly in front of you (in your facing direction). You must be facing the target.",
         parameters: {
           type: "object",
           properties: {
@@ -503,6 +550,13 @@ function parseToolCall(toolCall) {
         const target = args["target"];
         if (target === "opus" || target === "sonnet" || target === "haiku") {
           return { type: "attack", target };
+        }
+        return { type: "rest" };
+      }
+      case "turn": {
+        const turnDir = args["direction"];
+        if (turnDir === "N" || turnDir === "S" || turnDir === "E" || turnDir === "W") {
+          return { type: "turn", direction: turnDir };
         }
         return { type: "rest" };
       }
@@ -552,17 +606,39 @@ function buildAdjacentInfo(personal, aliveAgents, width, height) {
     const delta = deltas[d];
     const nx = personal.position.x + delta.dx;
     const ny = personal.position.y + delta.dy;
+    const facingTag = d === personal.orientation ? " [FACING - can attack here]" : "";
     if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
-      return `${d}=wall`;
+      return `${d}=wall${facingTag}`;
     }
     const occupant = aliveAgents.find(
       (a) => a.status === "alive" && a.position.x === nx && a.position.y === ny
     );
     if (occupant) {
-      return `${d}=(${nx},${ny}) ${occupant.agentId}`;
+      return `${d}=(${nx},${ny}) ${occupant.agentId}${facingTag}`;
     }
-    return `${d}=(${nx},${ny}) empty`;
+    return `${d}=(${nx},${ny}) empty${facingTag}`;
   }).join(", ");
+}
+function buildAttackTargetInfo(personal, aliveAgents, width, height) {
+  const deltas = {
+    N: { dx: 0, dy: -1 },
+    S: { dx: 0, dy: 1 },
+    E: { dx: 1, dy: 0 },
+    W: { dx: -1, dy: 0 }
+  };
+  const delta = deltas[personal.orientation];
+  const fx = personal.position.x + delta.dx;
+  const fy = personal.position.y + delta.dy;
+  if (fx < 0 || fx >= width || fy < 0 || fy >= height) {
+    return `ATTACK TARGET: You are facing a wall (${DIRECTION_NAMES2[personal.orientation]}). You cannot attack. Use turn(direction) to face a different direction, or move.`;
+  }
+  const target = aliveAgents.find(
+    (a) => a.status === "alive" && a.agentId !== personal.agentId && a.position.x === fx && a.position.y === fy
+  );
+  if (target) {
+    return `ATTACK TARGET: You can attack ${target.agentId} at (${fx},${fy}) \u2014 they are directly in front of you.`;
+  }
+  return `ATTACK TARGET: Cell (${fx},${fy}) in front of you is empty. No one to attack. Use turn(direction) to change facing, or move closer.`;
 }
 var DIRECTION_NAMES3 = {
   N: "North",
@@ -580,6 +656,8 @@ function buildSummaryPrompt(roundNumber, turnRecords, agents) {
         const elim = t.result.targetEliminated ? ` ${t.result.target} was eliminated!` : "";
         return `${t.agentId} attacked ${t.result.target} from the ${t.result.hitZone} for ${t.result.damage} damage (${t.result.targetHpBefore}\u2192${t.result.targetHpAfter} HP).${elim}`;
       }
+      case "turn":
+        return `${t.agentId} turned to face ${DIRECTION_NAMES3[t.result.newOrientation]}.`;
       case "rest":
         return `${t.agentId} rested.`;
       case "invalid":
@@ -678,6 +756,7 @@ async function runGameLoop(client, gameId, initialState, config) {
       const prevTurns = state.turnRecords.filter((t) => t.roundNumber === round - 1);
       try {
         const { system, user } = buildSummaryPrompt(round - 1, prevTurns, state.agents);
+        const tSummary = Date.now();
         const completion = await client.ai.chat.completions.create({
           model: SUMMARY_MODEL,
           messages: [
@@ -687,6 +766,7 @@ async function runGameLoop(client, gameId, initialState, config) {
           temperature: 0.8,
           maxTokens: 200
         });
+        console.log(`[R${round}][summary] LLM call: ${Date.now() - tSummary}ms (${SUMMARY_MODEL})`);
         const summaryText = completion.choices?.[0]?.message?.content ?? "No summary available.";
         await client.database.from("round_summaries").insert([{
           game_id: gameId,
@@ -730,6 +810,7 @@ async function runGameLoop(client, gameId, initialState, config) {
         const systemPrompt = buildSystemPrompt(turnAgent.agentId);
         const userMessage = buildUserMessage(sharedView, personalView, state.agents.filter((a) => a.status === "alive"));
         const tools = buildToolDefinitions(aliveOpponents);
+        const t0 = Date.now();
         const completion = await client.ai.chat.completions.create({
           model: turnAgent.modelId,
           messages: [
@@ -741,6 +822,7 @@ async function runGameLoop(client, gameId, initialState, config) {
           temperature: 0.7,
           maxTokens: 500
         });
+        console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId})`);
         rawResponse = completion;
         const message = completion.choices?.[0]?.message;
         reasoning = message?.content ?? "";
@@ -784,7 +866,7 @@ async function runGameLoop(client, gameId, initialState, config) {
         round_number: round,
         agent_id: turnAgent.agentId,
         action_type: resolvedAction.type,
-        action_params: resolvedAction.type === "move" ? { direction: resolvedAction.direction } : resolvedAction.type === "attack" ? { target: resolvedAction.target } : {},
+        action_params: resolvedAction.type === "move" ? { direction: resolvedAction.direction } : resolvedAction.type === "attack" ? { target: resolvedAction.target } : resolvedAction.type === "turn" ? { direction: resolvedAction.direction } : {},
         result,
         llm_reasoning: reasoning || null,
         raw_llm_response: rawResponse

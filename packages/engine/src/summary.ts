@@ -23,6 +23,8 @@ export function buildSummaryPrompt(
         const elim = t.result.targetEliminated ? ` ${t.result.target} was eliminated!` : '';
         return `${t.agentId} attacked ${t.result.target} from the ${t.result.hitZone} for ${t.result.damage} damage (${t.result.targetHpBefore}→${t.result.targetHpAfter} HP).${elim}`;
       }
+      case 'turn':
+        return `${t.agentId} turned to face ${DIRECTION_NAMES[t.result.newOrientation]}.`;
       case 'rest':
         return `${t.agentId} rested.`;
       case 'invalid':

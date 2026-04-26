@@ -35,6 +35,9 @@ export function buildMemoryEntry(
       return entry;
     }
 
+    case 'turn':
+      return `Round ${round}: I turned from ${DIRECTION_NAMES[result.previousOrientation]} to face ${DIRECTION_NAMES[result.newOrientation]}.`;
+
     case 'rest':
       return `Round ${round}: I rested. +${result.epBonusNextTurn} EP next turn.`;
 

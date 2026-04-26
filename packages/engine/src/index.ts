@@ -11,12 +11,14 @@ export type {
   AgentState,
   MoveAction,
   AttackAction,
+  TurnAction,
   RestAction,
   InvalidAction,
   AgentAction,
   ResolvedAction,
   MoveResult,
   AttackResult,
+  TurnResult,
   RestResult,
   InvalidResult,
   ActionResult,
@@ -63,6 +65,7 @@ export { appendMemory, buildMemoryEntry } from './memory.js';
 export {
   validateMove,
   validateAttack,
+  validateTurn,
   validateRest,
   executeAction,
 } from './actions.js';

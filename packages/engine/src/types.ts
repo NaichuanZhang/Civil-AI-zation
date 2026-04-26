@@ -4,7 +4,7 @@ export type AgentStatus = 'alive' | 'eliminated';
 export type HitZone = 'front' | 'side' | 'back';
 export type GameStatus = 'pending' | 'running' | 'completed';
 export type GameResult = 'elimination' | 'highest_hp' | 'draw';
-export type ActionType = 'move' | 'attack' | 'rest' | 'invalid';
+export type ActionType = 'move' | 'attack' | 'rest' | 'turn' | 'invalid';
 
 export interface Position {
   readonly x: number;
@@ -44,6 +44,11 @@ export interface AttackAction {
   readonly target: AgentId;
 }
 
+export interface TurnAction {
+  readonly type: 'turn';
+  readonly direction: Direction;
+}
+
 export interface RestAction {
   readonly type: 'rest';
 }
@@ -53,7 +58,7 @@ export interface InvalidAction {
   readonly reason: string;
 }
 
-export type AgentAction = MoveAction | AttackAction | RestAction;
+export type AgentAction = MoveAction | AttackAction | TurnAction | RestAction;
 export type ResolvedAction = AgentAction | InvalidAction;
 
 export interface MoveResult {
@@ -73,6 +78,12 @@ export interface AttackResult {
   readonly targetEliminated: boolean;
 }
 
+export interface TurnResult {
+  readonly type: 'turn';
+  readonly previousOrientation: Direction;
+  readonly newOrientation: Direction;
+}
+
 export interface RestResult {
   readonly type: 'rest';
   readonly epBonusNextTurn: number;
@@ -84,7 +95,7 @@ export interface InvalidResult {
   readonly fallbackAction: RestResult;
 }
 
-export type ActionResult = MoveResult | AttackResult | RestResult | InvalidResult;
+export type ActionResult = MoveResult | AttackResult | TurnResult | RestResult | InvalidResult;
 
 export interface TurnRecord {
   readonly roundNumber: number;
