@@ -138,108 +138,98 @@ export function useGameState() {
 
       insforge.realtime.on('turn_completed', (payload: Record<string, unknown>) => {
         const agentId = (payload as { agentId: string }).agentId;
-        const action = payload.action as EventLogEntry['action'];
-        const result = payload.result as EventLogEntry['result'];
+        const actions = (payload.actions ?? [payload.action]) as EventLogEntry['action'][];
+        const results = (payload.results ?? [payload.result]) as EventLogEntry['result'][];
+        const lastAction = [...actions].reverse().find(a => a?.type !== 'invalid') ?? actions[actions.length - 1];
         const reasoning = payload.reasoning as string | null;
         const incoming = payload.agents as GameUIState['agents'];
         const agents = incoming.map((a) =>
-          a.agentId === agentId ? { ...a, lastAction: action } : a,
+          a.agentId === agentId ? { ...a, lastAction } : a,
         );
 
-        // Always log to agent-specific tab (addLog checks if agent is enabled)
-        console.log('[turn_completed] agentId:', agentId, 'reasoning:', reasoning ? 'present' : 'none');
+        console.log('[turn_completed] agentId:', agentId, 'actions:', actions.length);
 
-        // Use setState callback to get current round number and agent state
         setState((s) => {
-          // Get states before and after action
           const prevAgentState = s.agents.find(a => a.agentId === agentId);
           const finalAgentState = agents.find(a => a.agentId === agentId);
-          const pos = finalAgentState?.position;
-          const orientation = finalAgentState?.orientation;
           const hp = finalAgentState?.hp ?? 0;
           const ep = finalAgentState?.ep ?? 0;
 
-          // Build comprehensive single log entry
+          // Build log for agent tab
           const logParts: string[] = [];
-
-          // Start with state before action
           if (prevAgentState) {
             logParts.push(`[R${s.round}] STATE: Pos (${prevAgentState.position.x},${prevAgentState.position.y}) | Face: ${prevAgentState.orientation} | HP: ${prevAgentState.hp} | EP: ${prevAgentState.ep}`);
           }
-
-          // Add reasoning
           if (reasoning) {
             logParts.push(`REASONING: ${reasoning}`);
           }
-
-          // Add action
-          const actionStr = `ACTION: ${action?.type || 'unknown'}${action?.direction ? ' ' + action.direction : ''}${action?.target ? ' → ' + action.target : ''}`;
-          logParts.push(actionStr);
-
-          // Add result with final state
-          if (result) {
-            let resultStr = `RESULT: ${result.type}`;
-            if (result.type === 'move' && result.to) {
-              resultStr += ` → Pos (${result.to.x},${result.to.y}) | Face: ${orientation}`;
+          for (let i = 0; i < actions.length; i++) {
+            const act = actions[i];
+            const res = results[i];
+            const actStr = `ACTION ${i + 1}: ${act?.type || 'unknown'}${act?.direction ? ' ' + act.direction : ''}${act?.target ? ' → ' + act.target : ''}`;
+            logParts.push(actStr);
+            if (res) {
+              let resStr = `RESULT ${i + 1}: ${res.type}`;
+              if (res.type === 'move' && res.to) resStr += ` → (${res.to.x},${res.to.y})`;
+              if (res.damage) resStr += ` (${res.damage} damage)`;
+              if (res.targetEliminated) resStr += ' [ELIMINATED]';
+              logParts.push(resStr);
             }
-            if (result.damage) {
-              resultStr += ` (${result.damage} damage)`;
-            }
-            if (result.targetEliminated) {
-              resultStr += ' [ELIMINATED]';
-            }
-            resultStr += ` | HP: ${hp} | EP: ${ep}`;
-            logParts.push(resultStr);
           }
+          logParts.push(`FINAL: HP: ${hp} | EP: ${ep}`);
 
-          // Log as single consolidated entry
-          console.log('[turn_completed] Adding consolidated log');
           addLogRef.current(
             agentId as 'opus' | 'sonnet' | 'haiku',
             'action',
             logParts.join('\n'),
-            {
-              round: s.round,
-              prevState: prevAgentState,
-              action,
-              result,
-              reasoning,
-              finalState: { position: pos, orientation, hp, ep }
-            }
+            { round: s.round, prevState: prevAgentState, action: lastAction, result: results[results.length - 1], reasoning, finalState: { position: finalAgentState?.position, orientation: finalAgentState?.orientation, hp, ep } }
           );
 
-          // Remove chest if agent collected one
+          // Remove chests collected in any move result
           let chests = s.chests;
-          const chestData = (result as Record<string, unknown>)?.chestCollected as
-            | { item: { type: string; hpChange: number }; hpBefore: number; hpAfter: number }
-            | undefined;
-          if (result?.type === 'move' && result?.to && chestData) {
-            chests = chests.filter(
-              (c) => !(c.position.x === result.to!.x && c.position.y === result.to!.y),
-            );
-          }
+          const newEntries: EventLogEntry[] = [];
 
-          // Build event log entries
-          const newEntries: EventLogEntry[] = [
-            {
+          for (let i = 0; i < actions.length; i++) {
+            const act = actions[i];
+            const res = results[i];
+
+            // Build readable text for system log
+            let actionText = `${agentId}`;
+            if (act?.type === 'move') actionText += ` moved ${act.direction}`;
+            else if (act?.type === 'attack') actionText += ` attacked ${act.target}`;
+            else if (act?.type === 'turn') actionText += ` turned ${act.direction}`;
+            else if (act?.type === 'rest') actionText += ` rested`;
+            else if (act?.type === 'invalid') actionText += ` invalid action`;
+            if (res?.type === 'attack' && res.damage) {
+              actionText += ` (${res.damage} dmg${res.targetEliminated ? ' - ELIMINATED!' : ''})`;
+            }
+
+            newEntries.push({
               type: 'turn',
               round: s.round,
               agentId,
-              action,
-              result,
-              reasoning: reasoning || undefined,
-            },
-          ];
-
-          if (chestData) {
-            const effect = chestData.item.hpChange > 0 ? 'hp_boost' : 'hp_drain';
-            const sign = chestData.item.hpChange > 0 ? '+' : '';
-            const emoji = chestData.item.hpChange > 0 ? '💚' : '💔';
-            newEntries.push({
-              type: 'summary',
-              round: s.round,
-              text: `[R${s.round}] ${emoji} ${agentId} opened a chest: ${effect} (${sign}${chestData.item.hpChange} HP) → HP ${chestData.hpBefore} → ${chestData.hpAfter}`,
+              action: act,
+              result: res,
+              reasoning: i === 0 ? (reasoning || undefined) : undefined,
+              text: `[R${s.round}] ${actionText}`,
             });
+
+            const chestData = (res as Record<string, unknown>)?.chestCollected as
+              | { item: { type: string; hpChange: number }; hpBefore: number; hpAfter: number }
+              | undefined;
+            if (res?.type === 'move' && res?.to && chestData) {
+              chests = chests.filter(
+                (c) => !(c.position.x === res.to!.x && c.position.y === res.to!.y),
+              );
+              const effect = chestData.item.hpChange > 0 ? 'hp_boost' : 'hp_drain';
+              const sign = chestData.item.hpChange > 0 ? '+' : '';
+              const emoji = chestData.item.hpChange > 0 ? '💚' : '💔';
+              newEntries.push({
+                type: 'summary',
+                round: s.round,
+                text: `[R${s.round}] ${emoji} ${agentId} opened a chest: ${effect} (${sign}${chestData.item.hpChange} HP) → HP ${chestData.hpBefore} → ${chestData.hpAfter}`,
+              });
+            }
           }
 
           return {

@@ -30,8 +30,7 @@ var AGENT_CONFIG_MAP = {
     hp: 25,
     startPosition: { x: 0, y: 2 },
     startOrientation: "up",
-    maxTokens: 2e3
-    // Opus gets more tokens for deeper reasoning
+    maxTokens: 500
   },
   sonnet: {
     modelId: "openai/gpt-4o-mini",
@@ -676,6 +675,8 @@ CRITICAL:
 YOUR IDENTITY:
 ${AGENT_PERSONALITIES[agentId]}
 
+IMPORTANT: Before calling the tool, briefly share your reasoning in the message content (max 50 words). Then call choose_actions with your action sequence.
+
 Choose your actions for this turn. You can perform MULTIPLE actions in sequence until you run out of EP or choose to rest. Plan your sequence carefully based on available EP. Consider: Can I move then attack? Should I reposition first? Am I vulnerable?`;
 }
 function buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections) {
@@ -1174,7 +1175,7 @@ async function runGameLoop(client, gameId, initialState, config) {
         config.mapHeight,
         aliveAgents
       );
-      let action;
+      let parsedActions = [{ type: "rest" }];
       let rawResponse = null;
       let reasoning = "";
       try {
@@ -1207,65 +1208,100 @@ async function runGameLoop(client, gameId, initialState, config) {
           } catch {
           }
           reasoning = thinkingReasoning || toolReasoning || message?.content || "";
-          const parsedActions = parseToolCall(toolCall);
-          action = parsedActions[0] || { type: "rest" };
+          parsedActions = parseToolCall(toolCall);
+          if (parsedActions.length === 0) parsedActions = [{ type: "rest" }];
         } else {
           reasoning = thinkingReasoning || message?.content || "";
-          action = { type: "rest" };
         }
       } catch (err) {
         console.error(`LLM call failed for ${turnAgent.agentId}:`, err);
-        action = { type: "rest" };
       }
-      const { agents: updatedAgents, chests: updatedChests, result } = executeAction(
-        turnAgent.agentId,
-        action,
-        state.agents,
-        config,
-        state.chests
+      const ACTION_ORDER = { move: 0, turn: 1, attack: 2, rest: 3 };
+      const orderedActions = [...parsedActions].sort(
+        (a, b) => (ACTION_ORDER[a.type] ?? 99) - (ACTION_ORDER[b.type] ?? 99)
       );
-      state = { ...state, agents: updatedAgents, chests: updatedChests };
-      if (result.type === "attack" && result.targetEliminated) {
-        state = {
-          ...state,
-          agents: updateAgent(state.agents, result.target, { eliminatedAtRound: round })
-        };
+      console.log(`[R${round}][${turnAgent.agentId}] Actions: ${orderedActions.map((a) => a.type).join(" \u2192 ")}`);
+      const allResults = [];
+      const allResolvedActions = [];
+      for (const action of orderedActions) {
+        if (action.type === "rest") {
+          const { agents: ra, chests: rc, result: rr } = executeAction(
+            turnAgent.agentId,
+            action,
+            state.agents,
+            config,
+            state.chests
+          );
+          state = { ...state, agents: ra, chests: rc };
+          allResults.push(rr);
+          allResolvedActions.push(action);
+          break;
+        }
+        const { agents: ua, chests: uc, result: ur } = executeAction(
+          turnAgent.agentId,
+          action,
+          state.agents,
+          config,
+          state.chests
+        );
+        state = { ...state, agents: ua, chests: uc };
+        allResults.push(ur);
+        if (ur.type === "invalid") {
+          allResolvedActions.push({ type: "invalid", reason: ur.reason });
+          break;
+        }
+        allResolvedActions.push(action);
+        if (ur.type === "attack" && ur.targetEliminated) {
+          state = {
+            ...state,
+            agents: updateAgent(state.agents, ur.target, { eliminatedAtRound: round })
+          };
+        }
       }
-      const memoryEntry = buildMemoryEntry(round, turnAgent.agentId, result, state.agents);
+      const lastResult = allResults[allResults.length - 1];
+      const lastAction = allResolvedActions[allResolvedActions.length - 1];
+      const memoryEntry = buildMemoryEntry(round, turnAgent.agentId, lastResult, state.agents);
       const agentAfterAction = state.agents.find((a) => a.agentId === turnAgent.agentId);
       const newMemory = appendMemory(agentAfterAction.memory, memoryEntry, config.memoryCap);
       state = { ...state, agents: updateAgent(state.agents, turnAgent.agentId, { memory: newMemory }) };
-      const resolvedAction = result.type === "invalid" ? { type: "invalid", reason: result.reason } : action;
       const turnRecord = {
         roundNumber: round,
         agentId: turnAgent.agentId,
-        action: resolvedAction,
-        result
+        action: lastAction,
+        result: lastResult
       };
       roundTurnRecords.push(turnRecord);
-      await client.database.from("turns").insert([{
-        game_id: gameId,
-        round_number: round,
-        agent_id: turnAgent.agentId,
-        action_type: resolvedAction.type,
-        action_params: resolvedAction.type === "move" ? { direction: resolvedAction.direction } : resolvedAction.type === "attack" ? { target: resolvedAction.target } : resolvedAction.type === "turn" ? { direction: resolvedAction.direction } : {},
-        result,
-        llm_reasoning: reasoning || null,
-        raw_llm_response: rawResponse
-      }]);
+      for (let i = 0; i < allResolvedActions.length; i++) {
+        const act = allResolvedActions[i];
+        const res = allResults[i];
+        await client.database.from("turns").insert([{
+          game_id: gameId,
+          round_number: round,
+          agent_id: turnAgent.agentId,
+          action_type: act.type,
+          action_params: act.type === "move" ? { direction: act.direction } : act.type === "attack" ? { target: act.target } : act.type === "turn" ? { direction: act.direction } : {},
+          result: res,
+          llm_reasoning: i === 0 ? reasoning || null : null,
+          raw_llm_response: i === 0 ? rawResponse : null
+        }]);
+      }
       await syncAgentStates(client, gameId, state.agents);
       await client.realtime.publish(`game:${gameId}`, "turn_completed", {
         agentId: turnAgent.agentId,
-        action: resolvedAction,
-        result,
+        actions: allResolvedActions,
+        results: allResults,
+        action: lastAction,
+        result: lastResult,
         reasoning: reasoning || null,
         agents: state.agents.map(toPublicAgent)
       });
-      if (result.type === "attack" && result.targetEliminated) {
-        await client.realtime.publish(`game:${gameId}`, "agent_eliminated", {
-          agentId: result.target,
-          eliminatedBy: turnAgent.agentId
-        });
+      for (const res of allResults) {
+        if (res.type === "attack" && res.targetEliminated) {
+          await client.realtime.publish(`game:${gameId}`, "agent_eliminated", {
+            agentId: res.target,
+            eliminatedBy: turnAgent.agentId
+          });
+        }
       }
       await delay(BACKEND_CONFIG.turnDelayMs);
     }
