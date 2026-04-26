@@ -6,6 +6,21 @@ interface GameControlsProps {
 }
 
 export function GameControls({ status, round, result, onStartGame }: GameControlsProps) {
+  const isCompleted = status === 'completed';
+  const isDisabled = status === 'loading' || status === 'running';
+
+  const getButtonColor = () => {
+    if (isDisabled) return '#334155';
+    if (isCompleted) return '#22c55e'; // Green for restart
+    return '#8b5cf6'; // Purple for new game
+  };
+
+  const getButtonText = () => {
+    if (status === 'loading') return 'Starting...';
+    if (isCompleted) return 'Restart Game';
+    return 'Start New Game';
+  };
+
   return (
     <div
       style={{
@@ -17,20 +32,30 @@ export function GameControls({ status, round, result, onStartGame }: GameControl
     >
       <button
         onClick={onStartGame}
-        disabled={status === 'loading' || status === 'running'}
+        disabled={isDisabled}
         style={{
           padding: '8px 20px',
           fontSize: 14,
           fontWeight: 'bold',
           border: 'none',
           borderRadius: 6,
-          cursor: status === 'loading' || status === 'running' ? 'not-allowed' : 'pointer',
-          backgroundColor: status === 'loading' || status === 'running' ? '#334155' : '#8b5cf6',
+          cursor: isDisabled ? 'not-allowed' : 'pointer',
+          backgroundColor: getButtonColor(),
           color: '#fff',
           transition: 'background-color 0.2s',
         }}
+        onMouseEnter={(e) => {
+          if (!isDisabled) {
+            e.currentTarget.style.backgroundColor = isCompleted ? '#16a34a' : '#7c3aed';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isDisabled) {
+            e.currentTarget.style.backgroundColor = getButtonColor();
+          }
+        }}
       >
-        {status === 'loading' ? 'Starting...' : 'Start New Game'}
+        {getButtonText()}
       </button>
 
       {status === 'running' && (
