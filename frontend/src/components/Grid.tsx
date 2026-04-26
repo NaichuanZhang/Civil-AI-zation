@@ -7,10 +7,10 @@ const AGENT_COLORS: Record<string, string> = {
 };
 
 const DIR_ARROWS: Record<string, string> = {
-  N: '↑',
-  S: '↓',
-  E: '→',
-  W: '←',
+  up: '↑',
+  down: '↓',
+  left: '←',
+  right: '→',
 };
 
 interface GridProps {
