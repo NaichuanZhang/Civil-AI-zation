@@ -450,52 +450,86 @@ function buildSystemPrompt(agentId) {
   return `You are playing Civil-AI-zation, a turn-based arena battle game on a 3x3 grid.
 
 OBJECTIVE:
-Survive. Be the last agent standing. Eliminate opponents by reducing their HP to 0 through attacks, or outlast them to have the highest HP when the game ends at round 30.
+SURVIVE and ELIMINATE opponents. Win by being the last agent standing, or having the highest HP at round 30.
 
-RULES:
-- You have 1 EP per turn (2 if you rested last turn). Each action costs 1 EP.
-- move(direction): Move 1 cell up/down/left/right. Sets your facing to that direction.
-- attack(target): Attack the agent directly in front of you (the cell you are facing). Damage depends on orientation:
-  - Front (target faces you): 2 damage
-  - Side (perpendicular): 5 damage
-  - Back (target faces away): 7 damage
-  You must be facing the target to attack. Use move to reposition and change facing first.
-- turn(direction): Change your facing direction without moving. Costs 1 EP.
-- rest(): Skip turn, gain +1 EP next turn.
-- You are eliminated if HP reaches 0.
-- Game ends when 1 agent remains or after round 30 (highest HP wins).
+=== COORDINATE SYSTEM ===
+The grid uses standard 2D array coordinates:
+- (0,0) is TOP-LEFT corner
+- X increases LEFT to RIGHT: 0 \u2192 1 \u2192 2
+- Y increases TOP to BOTTOM: 0 \u2192 1 \u2192 2
 
-COORDINATE SYSTEM:
-- The 3x3 grid uses standard screen coordinates:
-  * (0,0) is the TOP-LEFT corner
-  * X-axis: 0 \u2192 1 \u2192 2 (left to right)
-  * Y-axis: 0 \u2192 1 \u2192 2 (top to bottom)
+CRITICAL: To find relative position between two points:
+- Compare X values: smaller X = more LEFT, larger X = more RIGHT
+- Compare Y values: smaller Y = more UP/TOP, larger Y = more DOWN/BOTTOM
 
-DIRECTIONS (use these exact words in move/turn actions):
-- up: Move UP (decreases Y). Example: (1,2) \u2192 (1,1)
-- down: Move DOWN (increases Y). Example: (1,0) \u2192 (1,1)
-- left: Move LEFT (decreases X). Example: (2,1) \u2192 (1,1)
-- right: Move RIGHT (increases X). Example: (0,1) \u2192 (1,1)
+Example: You are at (2,1), opponent at (0,1)
+- Same Y (both at 1) = same horizontal row
+- Your X=2, opponent X=0 \u2192 opponent is 2 cells to your LEFT
+- To reach: move left to (1,1), then move left again to (0,1)
 
-IMPORTANT: Lower Y values are HIGHER on the grid!
-- Position (1,1) is ABOVE (1,2) because 1 < 2
-- Position (1,0) is at the TOP of the grid
-- Position (1,2) is at the BOTTOM of the grid
+=== ACTIONS (each costs 1 EP) ===
+1. move(direction): Move 1 cell AND automatically face that direction
+   - up: decreases Y by 1, face up. Example: (1,2) \u2192 (1,1)
+   - down: increases Y by 1, face down. Example: (1,0) \u2192 (1,1)
+   - left: decreases X by 1, face left. Example: (2,1) \u2192 (1,1)
+   - right: increases X by 1, face right. Example: (0,1) \u2192 (1,1)
+   - Cost: 1 EP (moving also turns you for FREE!)
 
-Example: If you are at (2,2) [bottom-right]:
-- Agent at (1,1) is UP and LEFT from you (not below!)
-- To reach them: move up to (2,1), then move left to (1,1)
+2. turn(direction): Change facing WITHOUT moving
+   - Use when you want to face a different direction but stay in place
+   - Cost: 1 EP
+
+3. attack(target): Attack the cell you are facing
+   - MUST be facing the target (they must be in the cell directly in front of you)
+   - Damage depends on target's facing relative to your attack:
+     * Front hit (target faces you): 2 damage (they see you coming)
+     * Side hit (perpendicular): 5 damage (flanking)
+     * Back hit (target faces away): 7 damage (BACKSTAB - massive damage!)
+   - Cost: 1 EP
+
+4. rest(): Skip turn, recover energy
+   - Gain +1 EP next turn (so you'll have 2 EP total next turn)
+   - Cost: 0 EP
+   - Use when low on energy or in defensive position
+
+=== ENERGY MANAGEMENT ===
+- Start each turn with 1 EP (or 2 EP if you rested last turn)
+- You MUST have enough EP to perform an action
+- Moving is efficient: 1 EP to move AND turn (2-in-1 action!)
+- Turning separately costs 1 EP, so prefer moving when possible
+
+=== STRATEGY TIPS ===
+1. POSITIONING: Get behind opponents for 7 damage backstabs (2.5x normal damage!)
+2. EFFICIENCY: Use move() instead of turn() when possible (free facing change)
+3. DEFENSE: If in danger of being attacked:
+   - Move away to safety (costs 1 EP)
+   - Turn to face attacker (reduces damage from 7\u21922 if they hit your back)
+   - Consider resting if safe (recover EP for stronger next turn)
+4. ENERGY: Watch your EP! Rest when needed to build up for multi-action turns
+5. DAMAGE AWARENESS:
+   - Getting hit in the BACK = 7 damage (very dangerous!)
+   - Getting hit in the SIDE = 5 damage (moderate)
+   - Getting hit in the FRONT = 2 damage (you saw it coming)
+   - Always try to face threats to minimize damage taken
 
 YOUR IDENTITY:
 ${AGENT_PERSONALITIES[agentId]}
 
-Choose ONE action. Think about positioning, opponent orientation, and survival.`;
+Choose ONE action. Consider: Can I backstab (7 dmg)? Am I vulnerable (facing wrong way)? Do I need energy (rest)?`;
 }
 function buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections) {
   const grid = buildGridVisual(aliveAgents, sharedView.mapWidth, sharedView.mapHeight);
   const agentLines = sharedView.agents.map((a) => {
     const youTag = a.agentId === personalView.agentId ? " [YOU]" : "";
-    return `- ${a.agentId}: position (${a.position.x},${a.position.y}), HP ${a.hp}, facing ${DIRECTION_NAMES2[a.orientation]}${youTag}`;
+    let relativePos = "";
+    if (a.agentId !== personalView.agentId) {
+      const dx = a.position.x - personalView.position.x;
+      const dy = a.position.y - personalView.position.y;
+      const horizontal = dx < 0 ? `${Math.abs(dx)} LEFT` : dx > 0 ? `${dx} RIGHT` : "SAME column";
+      const vertical = dy < 0 ? `${Math.abs(dy)} UP` : dy > 0 ? `${dy} DOWN` : "SAME row";
+      relativePos = ` | Relative to you: ${horizontal}, ${vertical}`;
+    }
+    return `- ${a.agentId}: position (${a.position.x},${a.position.y}), HP ${a.hp}, facing ${DIRECTION_NAMES2[a.orientation]}${youTag}${relativePos}`;
   }).join("\n");
   const eliminatedLines = sharedView.eliminatedAgents.length > 0 ? sharedView.eliminatedAgents.map((a) => `- ${a.agentId}: eliminated in round ${a.eliminatedAtRound}`).join("\n") : "None";
   const adjacentInfo = buildAdjacentInfo(personalView, aliveAgents, sharedView.mapWidth, sharedView.mapHeight);
