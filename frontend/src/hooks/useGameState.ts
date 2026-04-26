@@ -91,11 +91,15 @@ export function useGameState() {
 
         // Always log to agent-specific tab (addLog checks if agent is enabled)
         console.log('[turn_started] agentId:', agentId);
+
+        // Get current agent state for logging
+        const currentAgent = state.agents.find(a => a.agentId === agentId);
+
         addLogRef.current(
           agentId as 'opus' | 'sonnet' | 'haiku',
           'system',
-          `Turn started - ${agentId} is thinking...`,
-          { round: state.round, agentId }
+          `[R${state.round}] Pos: (${currentAgent?.position.x ?? '?'},${currentAgent?.position.y ?? '?'}) | Face: ${currentAgent?.orientation ?? '?'} | HP: ${currentAgent?.hp ?? 0} | EP: ${currentAgent?.ep ?? 0} | Thinking...`,
+          { round: state.round, agentId, agentState: currentAgent }
         );
 
         setState((s) => ({
@@ -126,23 +130,12 @@ export function useGameState() {
         // Always log to agent-specific tab (addLog checks if agent is enabled)
         console.log('[turn_completed] agentId:', agentId, 'reasoning:', reasoning ? 'present' : 'none');
 
-        // Get agent state for position and last action info
-        const agentState = agents.find(a => a.agentId === agentId);
-        const prevAgentState = state.agents.find(a => a.agentId === agentId);
-
-        // Log position and previous action context
-        addLogRef.current(
-          agentId as 'opus' | 'sonnet' | 'haiku',
-          'system',
-          `Position: (${prevAgentState?.position.x}, ${prevAgentState?.position.y}) | Facing: ${prevAgentState?.orientation} | HP: ${prevAgentState?.hp} | EP: ${agentState?.ep}`,
-          {
-            position: prevAgentState?.position,
-            orientation: prevAgentState?.orientation,
-            hp: prevAgentState?.hp,
-            ep: agentState?.ep,
-            lastAction: prevAgentState?.lastAction
-          }
-        );
+        // Get final agent state after action (from incoming agents array)
+        const finalAgentState = agents.find(a => a.agentId === agentId);
+        const pos = finalAgentState?.position;
+        const orientation = finalAgentState?.orientation;
+        const hp = finalAgentState?.hp ?? 0;
+        const ep = finalAgentState?.ep ?? 0;
 
         // Log reasoning/rationale
         if (reasoning) {
@@ -164,14 +157,14 @@ export function useGameState() {
           { action, result }
         );
 
-        // Log the result
+        // Log the result with final position
         if (result) {
           console.log('[turn_completed] Adding result log');
 
-          // Build detailed result message
+          // Build detailed result message including final state
           let resultMsg = `Result: ${result.type}`;
           if (result.type === 'move' && result.to) {
-            resultMsg += ` → Position: (${result.to.x}, ${result.to.y})`;
+            resultMsg += ` → New Pos: (${result.to.x}, ${result.to.y}) | Face: ${orientation ?? '?'}`;
           }
           if (result.damage) {
             resultMsg += ` (${result.damage} damage)`;
@@ -179,12 +172,13 @@ export function useGameState() {
           if (result.targetEliminated) {
             resultMsg += ' [ELIMINATED]';
           }
+          resultMsg += ` | HP: ${hp} | EP: ${ep}`;
 
           addLogRef.current(
             agentId as 'opus' | 'sonnet' | 'haiku',
             'result',
             resultMsg,
-            result
+            { result, finalPosition: pos, finalHp: hp, finalEp: ep }
           );
         }
 

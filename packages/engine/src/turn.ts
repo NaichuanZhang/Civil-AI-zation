@@ -16,8 +16,8 @@ export function resetEpForTurn(
   config: GameConfig,
   restedLastTurn: boolean,
 ): AgentState {
-  const ep = restedLastTurn
-    ? config.energyPoints + config.restEpBonus
-    : config.energyPoints;
-  return { ...agent, ep };
+  // Accumulate EP with cap instead of resetting
+  const bonusEp = restedLastTurn ? config.restEpBonus : 0;
+  const newEp = Math.min(agent.ep + config.energyPoints + bonusEp, config.maxEp);
+  return { ...agent, ep: newEp };
 }

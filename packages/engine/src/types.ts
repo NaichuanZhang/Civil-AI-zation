@@ -112,6 +112,7 @@ export interface GameConfig {
   readonly restEpBonus: number;
   readonly memoryCap: number;
   readonly energyPoints: number;
+  readonly maxEp: number;
   readonly agents: readonly AgentConfig[];
 }
 

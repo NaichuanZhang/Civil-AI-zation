@@ -90,6 +90,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
   restEpBonus: 1,
   memoryCap: 10,
   energyPoints: 1,
+  maxEp: 3,
   agents: Object.entries(AGENT_CONFIG_MAP).map(([agentId, config]) => ({
     agentId: agentId as keyof typeof AGENT_CONFIG_MAP,
     modelId: config.modelId,

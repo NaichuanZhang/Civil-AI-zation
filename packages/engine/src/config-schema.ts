@@ -58,6 +58,7 @@ export interface GameConfigSchema {
   restEpBonus: number;
   memoryCap: number;
   energyPoints: number;
+  maxEp: number;
   agents: Record<AgentId, AgentConfigSchema>;
   hitZoneModifiers: HitZoneModifiersSchema;
   actionCosts: ActionCostsSchema;

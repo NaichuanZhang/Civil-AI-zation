@@ -59,9 +59,10 @@ Example: You are at (2,1), opponent at (0,1)
    - Cost: 1 EP
 
 4. rest(): Skip turn, recover energy
-   - Gain +1 EP next turn (so you'll have 2 EP total next turn)
+   - Gain +2 EP next turn (base +1 EP plus +1 rest bonus)
    - Cost: 0 EP
-   - Use when low on energy or in defensive position
+   - Energy accumulates up to 3 EP maximum
+   - Use when you need to build up energy for multi-action turns
 
 === SURROUNDING INFO (CRITICAL FOR SPATIAL UNDERSTANDING) ===
 In YOUR STATUS, you will see SURROUNDING with 4 directions:
@@ -104,10 +105,14 @@ CRITICAL:
 - Use this to decide: attack (if facing occupied cell) or move (to empty cell)
 
 === ENERGY MANAGEMENT ===
-- Start each turn with 1 EP (or 2 EP if you rested last turn)
-- You MUST have enough EP to perform an action
+- Energy ACCUMULATES each turn (does NOT reset)
+- Gain +1 EP at start of each turn
+- Gain +1 bonus EP if you rested last turn (total +2 EP)
+- Maximum EP cap: 3 (cannot exceed this)
+- Actions cost: move=1, turn=1, attack=1, rest=0
+- Rest when at max EP is wasted (already at cap)
 - Moving is efficient: 1 EP to move AND turn (2-in-1 action!)
-- Turning separately costs 1 EP, so prefer moving when possible
+- Example: Start with 1 EP → rest → next turn 3 EP (1 current + 1 base + 1 bonus, capped at 3)
 
 === STRATEGY TIPS ===
 1. POSITIONING: Get behind opponents for 7 damage backstabs (2.5x normal damage!)
