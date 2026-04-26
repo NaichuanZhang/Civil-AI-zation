@@ -19,6 +19,7 @@ import {
   buildMemoryEntry,
   buildSummaryPrompt,
   getValidMoveDirections,
+  spawnChest,
 } from './engine/index.js';
 import type {
   AgentState,
@@ -198,10 +199,25 @@ async function runGameLoop(
   for (let round = 1; round <= config.maxRounds; round++) {
     state = { ...state, round };
 
+    console.log(`[R${round}] Round started`);
+
     await client.realtime.publish(`game:${gameId}`, 'round_started', {
       roundNumber: round,
       turnOrder: getTurnOrder(state.agents).map((a) => a.agentId),
     });
+
+    // Spawn chest on configured rounds
+    if (config.chests.enabled && config.chests.spawnRounds.includes(round)) {
+      const newChest = spawnChest(state.agents, state.chests, config);
+      if (newChest) {
+        state = { ...state, chests: [...state.chests, newChest] };
+        console.log(`[R${round}] Chest spawned at (${newChest.position.x},${newChest.position.y})`);
+        await client.realtime.publish(`game:${gameId}`, 'chest_spawned', {
+          roundNumber: round,
+          position: newChest.position,
+        });
+      }
+    }
 
     if (round > 1) {
       const prevTurns = state.turnRecords.filter((t) => t.roundNumber === round - 1);

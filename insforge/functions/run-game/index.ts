@@ -56,12 +56,14 @@ var AGENT_INITIAL_HP = Object.fromEntries(
 var CHEST_CONFIG = {
   enabled: true,
   // Enable/disable chest feature
-  spawnRounds: [5, 10, 15, 20, 25, 30],
-  // Chests spawn every 5 rounds
+  spawnRounds: [2, 7, 12, 17, 22, 27],
+  // First chest at round 2, then every 5 rounds
   hpBoostAmount: 5,
   // HP gained from hp_boost item
-  hpDrainAmount: -5
+  hpDrainAmount: -5,
   // HP lost from hp_drain item
+  maxOnBoard: 2
+  // Max unopened chests on the board at once
 };
 var DEFAULT_GAME_CONFIG = {
   mapWidth: 3,
@@ -267,6 +269,40 @@ function buildMemoryEntry(round, _agentId, result, _agents) {
 }
 
 // packages/engine/src/chest.ts
+function spawnChest(agents, existingChests, config) {
+  if (!config.chests.enabled) {
+    return null;
+  }
+  const unopenedCount = existingChests.filter((c) => !c.opened).length;
+  if (unopenedCount >= config.chests.maxOnBoard) {
+    return null;
+  }
+  const emptyPositions = [];
+  for (let y = 0; y < config.mapHeight; y++) {
+    for (let x = 0; x < config.mapWidth; x++) {
+      const pos = { x, y };
+      const occupied = agents.some(
+        (a) => a.status === "alive" && a.position.x === x && a.position.y === y
+      );
+      const hasChest = existingChests.some(
+        (c) => !c.opened && c.position.x === x && c.position.y === y
+      );
+      if (!occupied && !hasChest) {
+        emptyPositions.push(pos);
+      }
+    }
+  }
+  if (emptyPositions.length === 0) {
+    return null;
+  }
+  const position = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
+  const item = Math.random() < 0.5 ? { type: "hp_boost", hpChange: config.chests.hpBoostAmount } : { type: "hp_drain", hpChange: config.chests.hpDrainAmount };
+  return {
+    position,
+    item,
+    opened: false
+  };
+}
 function findChestAtPosition(chests, position) {
   return chests.find(
     (c) => !c.opened && c.position.x === position.x && c.position.y === position.y
@@ -1056,10 +1092,22 @@ async function runGameLoop(client, gameId, initialState, config) {
   });
   for (let round = 1; round <= config.maxRounds; round++) {
     state = { ...state, round };
+    console.log(`[R${round}] Round started`);
     await client.realtime.publish(`game:${gameId}`, "round_started", {
       roundNumber: round,
       turnOrder: getTurnOrder(state.agents).map((a) => a.agentId)
     });
+    if (config.chests.enabled && config.chests.spawnRounds.includes(round)) {
+      const newChest = spawnChest(state.agents, state.chests, config);
+      if (newChest) {
+        state = { ...state, chests: [...state.chests, newChest] };
+        console.log(`[R${round}] Chest spawned at (${newChest.position.x},${newChest.position.y})`);
+        await client.realtime.publish(`game:${gameId}`, "chest_spawned", {
+          roundNumber: round,
+          position: newChest.position
+        });
+      }
+    }
     if (round > 1) {
       const prevTurns = state.turnRecords.filter((t) => t.roundNumber === round - 1);
       try {

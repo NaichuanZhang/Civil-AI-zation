@@ -15,6 +15,11 @@ export function spawnChest(
     return null;
   }
 
+  const unopenedCount = existingChests.filter((c) => !c.opened).length;
+  if (unopenedCount >= config.chests.maxOnBoard) {
+    return null;
+  }
+
   // Find all empty positions (not occupied by agents or existing chests)
   const emptyPositions: Position[] = [];
   for (let y = 0; y < config.mapHeight; y++) {

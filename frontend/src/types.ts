@@ -24,10 +24,19 @@ export interface EventLogEntry {
     from?: { x: number; y: number };
     to?: { x: number; y: number };
     newOrientation?: string;
+    chestCollected?: {
+      item: { type: string; hpChange: number };
+      hpBefore: number;
+      hpAfter: number;
+    };
   };
   reasoning?: string;
   text?: string;
   eliminatedBy?: string;
+}
+
+export interface ChestUIState {
+  position: { x: number; y: number };
 }
 
 export interface GameUIState {
@@ -35,6 +44,7 @@ export interface GameUIState {
   status: 'idle' | 'loading' | 'running' | 'completed';
   round: number;
   agents: AgentUIState[];
+  chests: ChestUIState[];
   eventLog: EventLogEntry[];
   result: { winner: string | null; type: string } | null;
   currentTurnAgent: string | null;

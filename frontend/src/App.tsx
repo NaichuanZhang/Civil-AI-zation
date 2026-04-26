@@ -57,7 +57,7 @@ export function App() {
 
         <div style={{ display: 'flex', gap: UI_CONFIG.gridGap, marginTop: 16 }}>
           <div>
-            <Grid agents={state.agents} currentTurnAgent={state.currentTurnAgent} />
+            <Grid agents={state.agents} chests={state.chests} currentTurnAgent={state.currentTurnAgent} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
             {state.agents.length > 0

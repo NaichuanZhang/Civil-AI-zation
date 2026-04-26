@@ -126,6 +126,7 @@ export interface ChestConfig {
   readonly spawnRounds: readonly number[];
   readonly hpBoostAmount: number;
   readonly hpDrainAmount: number;
+  readonly maxOnBoard: number;
 }
 
 export interface GameConfig {

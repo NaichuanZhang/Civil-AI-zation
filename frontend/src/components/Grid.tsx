@@ -1,4 +1,4 @@
-import type { AgentUIState } from '../types';
+import type { AgentUIState, ChestUIState } from '../types';
 
 const AGENT_COLORS: Record<string, string> = {
   opus: '#8b5cf6',
@@ -15,17 +15,19 @@ const DIR_ARROWS: Record<string, string> = {
 
 interface GridProps {
   agents: AgentUIState[];
+  chests: ChestUIState[];
   currentTurnAgent: string | null;
   gridSize?: number;
 }
 
-export function Grid({ agents, currentTurnAgent, gridSize = 3 }: GridProps) {
+export function Grid({ agents, chests, currentTurnAgent, gridSize = 3 }: GridProps) {
   const cells = [];
   for (let y = 0; y < gridSize; y++) {
     for (let x = 0; x < gridSize; x++) {
       const agent = agents.find(
         (a) => a.status === 'alive' && a.position.x === x && a.position.y === y,
       );
+      const chest = chests.find((c) => c.position.x === x && c.position.y === y);
       const isActive = agent?.agentId === currentTurnAgent;
 
       cells.push(
@@ -38,11 +40,11 @@ export function Grid({ agents, currentTurnAgent, gridSize = 3 }: GridProps) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#1e293b',
+            backgroundColor: chest && !agent ? '#2a1f0a' : '#1e293b',
             position: 'relative',
           }}
         >
-          {agent && (
+          {agent ? (
             <div
               style={{
                 width: 48,
@@ -65,7 +67,9 @@ export function Grid({ agents, currentTurnAgent, gridSize = 3 }: GridProps) {
               <span style={{ fontSize: 16 }}>{DIR_ARROWS[agent.orientation] ?? '?'}</span>
               <span style={{ fontSize: 9 }}>{agent.agentId[0]?.toUpperCase()}</span>
             </div>
-          )}
+          ) : chest ? (
+            <span style={{ fontSize: 24 }}>📦</span>
+          ) : null}
           <span
             style={{
               position: 'absolute',

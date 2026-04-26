@@ -86,9 +86,10 @@ export const AGENT_INITIAL_HP = Object.fromEntries(
  */
 export const CHEST_CONFIG = {
   enabled: true,                          // Enable/disable chest feature
-  spawnRounds: [5, 10, 15, 20, 25, 30],  // Chests spawn every 5 rounds
+  spawnRounds: [2, 7, 12, 17, 22, 27],  // First chest at round 2, then every 5 rounds
   hpBoostAmount: 5,                      // HP gained from hp_boost item
   hpDrainAmount: -5,                     // HP lost from hp_drain item
+  maxOnBoard: 2,                         // Max unopened chests on the board at once
 } as const;
 
 /**

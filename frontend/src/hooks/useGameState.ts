@@ -8,6 +8,7 @@ const INITIAL_STATE: GameUIState = {
   status: 'idle',
   round: 0,
   agents: [],
+  chests: [],
   eventLog: [],
   result: null,
   currentTurnAgent: null,
@@ -61,14 +62,24 @@ export function useGameState() {
           ...s,
           status: 'running',
           agents: payload.agents as GameUIState['agents'],
+          chests: [],
           round: 0,
         }));
       });
 
       insforge.realtime.on('round_started', (payload: Record<string, unknown>) => {
+        const roundNumber = payload.roundNumber as number;
         setState((s) => ({
           ...s,
-          round: payload.roundNumber as number,
+          round: roundNumber,
+          eventLog: [
+            ...s.eventLog,
+            {
+              type: 'summary',
+              round: roundNumber,
+              text: `--- Round ${roundNumber} ---`,
+            } satisfies EventLogEntry,
+          ],
         }));
       });
 
@@ -81,6 +92,24 @@ export function useGameState() {
               type: 'summary',
               round: payload.roundNumber as number,
               text: payload.summary as string,
+            } satisfies EventLogEntry,
+          ],
+        }));
+      });
+
+      insforge.realtime.on('chest_spawned', (payload: Record<string, unknown>) => {
+        const position = payload.position as { x: number; y: number };
+        const roundNumber = payload.roundNumber as number;
+
+        setState((s) => ({
+          ...s,
+          chests: [...s.chests, { position }],
+          eventLog: [
+            ...s.eventLog,
+            {
+              type: 'summary',
+              round: roundNumber,
+              text: `[R${roundNumber}] Treasure chest appeared at (${position.x},${position.y})!`,
             } satisfies EventLogEntry,
           ],
         }));
@@ -179,21 +208,46 @@ export function useGameState() {
             }
           );
 
+          // Remove chest if agent collected one
+          let chests = s.chests;
+          const chestData = (result as Record<string, unknown>)?.chestCollected as
+            | { item: { type: string; hpChange: number }; hpBefore: number; hpAfter: number }
+            | undefined;
+          if (result?.type === 'move' && result?.to && chestData) {
+            chests = chests.filter(
+              (c) => !(c.position.x === result.to!.x && c.position.y === result.to!.y),
+            );
+          }
+
+          // Build event log entries
+          const newEntries: EventLogEntry[] = [
+            {
+              type: 'turn',
+              round: s.round,
+              agentId,
+              action,
+              result,
+              reasoning: reasoning || undefined,
+            },
+          ];
+
+          if (chestData) {
+            const effect = chestData.item.hpChange > 0 ? 'hp_boost' : 'hp_drain';
+            const sign = chestData.item.hpChange > 0 ? '+' : '';
+            const emoji = chestData.item.hpChange > 0 ? '💚' : '💔';
+            newEntries.push({
+              type: 'summary',
+              round: s.round,
+              text: `[R${s.round}] ${emoji} ${agentId} opened a chest: ${effect} (${sign}${chestData.item.hpChange} HP) → HP ${chestData.hpBefore} → ${chestData.hpAfter}`,
+            });
+          }
+
           return {
             ...s,
             agents,
+            chests,
             currentTurnAgent: null,
-            eventLog: [
-              ...s.eventLog,
-              {
-                type: 'turn',
-                round: s.round,
-                agentId,
-                action,
-                result,
-                reasoning: reasoning || undefined,
-              } satisfies EventLogEntry,
-            ],
+            eventLog: [...s.eventLog, ...newEntries],
           };
         });
       });
