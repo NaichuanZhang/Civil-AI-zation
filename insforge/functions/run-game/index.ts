@@ -564,7 +564,7 @@ CRITICAL:
 YOUR IDENTITY:
 ${AGENT_PERSONALITIES[agentId]}
 
-Choose ONE action. Consider: Can I backstab (7 dmg)? Am I vulnerable (facing wrong way)? Do I need energy (rest)?`;
+Choose one action to perform this turn. With your available EP, you can take multiple actions in future turns until you either choose to rest or your energy is exhausted. Consider: Can I backstab (7 dmg)? Am I vulnerable (facing wrong way)? Should I save energy or spend it now?`;
 }
 function buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections) {
   const grid = buildGridVisual(aliveAgents, sharedView.mapWidth, sharedView.mapHeight);
