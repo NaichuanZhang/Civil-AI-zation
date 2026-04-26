@@ -47,7 +47,7 @@ export const AGENT_PERSONALITIES = {
  */
 export const AGENT_CONFIG_MAP = {
   opus: {
-    modelId: 'openai/gpt-4o-mini',
+    modelId: 'zai/glm-5-turbo',
     speed: 2,
     hp: 25,
     startPosition: { x: 0, y: 2 },
@@ -127,7 +127,7 @@ export const AGENT_COLORS = {
  * Human-readable model names for UI
  */
 export const AGENT_MODELS = {
-  opus: 'GPT-4o Mini',
+  opus: 'GLM-5 Turbo',
   sonnet: 'GPT-4o Mini',
   haiku: 'GPT-4o Mini',
 } as const;

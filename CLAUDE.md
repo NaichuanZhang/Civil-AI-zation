@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Civil-AI-zation is a turn-based AI arena battle game where three LLM agents (opus, sonnet, haiku — all using `openai/gpt-4o-mini`) compete on a 3x3 grid. The game is fully automated; spectators watch via a React UI that receives realtime events.
+Civil-AI-zation is a turn-based AI arena battle game where three LLM agents compete on a 3x3 grid — opus uses `zai/glm-5-turbo` (Z.AI direct API), sonnet and haiku use `openai/gpt-4o-mini` (InsForge AI proxy). The game is fully automated; spectators watch via a React UI that receives realtime events.
 
 ## Commands
 
@@ -69,20 +69,31 @@ Key patterns:
 - **`executeAction()`** validates then executes. Invalid actions automatically fall back to rest.
 - **`updateAgent()`** returns a new array with one agent replaced (immutable update pattern used everywhere).
 - Agents can only attack the cell they're **facing** — `validateAttack` checks `getAdjacentPosition(agent.position, agent.orientation)`.
+- **Memory**: agents get entries for their own actions and when they are attacked. Capped at 10 entries via `appendMemory`. `buildTargetMemoryEntry` creates the incoming-attack memory.
 
 ### Edge Functions
 
-**`run-game/index.src.ts`** is the source file. It imports from `./engine.ts` (a local esbuild bundle of the engine). The build step (`pnpm build:edge`) produces `index.ts` which is the deployable artifact. **Never edit `index.ts` directly** — it's generated.
+**`run-game/index.src.ts`** is the source file. It imports from `./engine/index.js` — a symlink to `packages/engine/src/`. The build step (`pnpm build:edge`) bundles everything into `index.ts` which is the deployable artifact. **Never edit `index.ts` directly** — it's generated.
 
 The function creates the game in DB, returns the gameId immediately, then runs the game loop in the background via a fire-and-forget promise. A 2-second delay before the first event gives the frontend time to subscribe.
 
-LLM calls are logged with latency: `[R3][haiku] LLM call: 1234ms (openai/gpt-4o-mini)`.
+The `toPublicAgent()` helper controls what agent fields are broadcast via realtime events — it must include any new agent fields the frontend needs (e.g., `ep`, `orientation`).
+
+The `callLlm()` helper routes LLM calls based on model prefix: `zai/` models go directly to Z.AI's API via `fetch()`, other models go through InsForge's AI proxy. Both paths return the same `LlmResponse` shape.
+
+LLM reasoning text is broadcast in `turn_completed` events as the `reasoning` field. For GLM models, reasoning comes from `message.reasoning_content`; for OpenAI models, from `message.content`.
 
 **`spectate/index.ts`** is a simple read-only function (no engine dependency, no build step needed).
 
 ### Frontend
 
-`useGameState` hook is the core — it invokes the `run-game` function, gets a gameId, subscribes to `game:{gameId}` realtime channel, and updates React state on each of 7 event types (game_started, round_started, round_summary, turn_started, turn_completed, agent_eliminated, game_ended).
+**`useGameState`** hook is the core — it invokes the `run-game` function, gets a gameId, subscribes to `game:{gameId}` realtime channel, and updates React state on each of 7 event types (game_started, round_started, round_summary, turn_started, turn_completed, agent_eliminated, game_ended).
+
+**`LogContext`** provides a VSCode-style logging system with per-agent tabs (opus, sonnet, haiku, system) and categories (system, prompt, action, result). `useGameState` writes to it via `addLogRef` (ref pattern to avoid stale closures in realtime callbacks). `LogViewer` renders the logs; agent tabs only appear when debug mode is on.
+
+**Debug mode** is a `useState` toggle in `App.tsx`, passed as `debugMode` prop to `AgentPanel` (shows EP, last action) and `LogViewer` (shows agent-specific tabs).
+
+**`lastAction`** on agents is derived client-side — the `turn_completed` handler merges the action onto the acting agent since the backend doesn't persist it on agent state.
 
 ### Database
 
@@ -103,4 +114,5 @@ LLM calls are logged with latency: `[R3][haiku] LLM call: 1234ms (openai/gpt-4o-
 - **URL**: `https://ayyn5caf.us-east.insforge.app`
 - Frontend env: `VITE_INSFORGE_URL`, `VITE_INSFORGE_ANON_KEY` in `frontend/.env`
 - Edge functions get `INSFORGE_BASE_URL` and `ANON_KEY` from `Deno.env.get()`
+- `ZAI_API_KEY` secret provides the Z.AI API key for direct GLM model calls
 - AI models available: check `npx @insforge/cli metadata --json` → `aiIntegration.models`

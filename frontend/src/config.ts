@@ -36,7 +36,7 @@ export const AGENT_COLORS: Record<string, string> = {
 } as const;
 
 export const AGENT_MODELS: Record<string, string> = {
-  opus: 'GPT-4o Mini',
+  opus: 'GLM-5 Turbo',
   sonnet: 'GPT-4o Mini',
   haiku: 'GPT-4o Mini',
 } as const;

@@ -25,7 +25,7 @@ var AGENT_PERSONALITIES = {
 };
 var AGENT_CONFIG_MAP = {
   opus: {
-    modelId: "openai/gpt-4o-mini",
+    modelId: "zai/glm-5-turbo",
     speed: 2,
     hp: 25,
     startPosition: { x: 0, y: 2 },
@@ -757,6 +757,43 @@ function jsonResponse(data, status = 200) {
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+async function callLlm(client, params) {
+  if (params.model.startsWith("zai/")) {
+    const actualModel = params.model.slice(4);
+    const apiKey = Deno.env.get("ZAI_API_KEY");
+    if (!apiKey) throw new Error("ZAI_API_KEY not configured");
+    const body = {
+      model: actualModel,
+      messages: params.messages,
+      temperature: params.temperature ?? 0.7,
+      max_tokens: params.maxTokens ?? 500
+    };
+    if (params.tools?.length) {
+      body.tools = params.tools;
+      body.tool_choice = params.tool_choice ?? "auto";
+    }
+    const res = await fetch("https://api.z.ai/api/paas/v4/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Z.AI API error (${res.status}): ${text}`);
+    }
+    return await res.json();
+  }
+  return await client.ai.chat.completions.create({
+    model: params.model,
+    messages: params.messages,
+    ...params.tools?.length ? { tools: params.tools, tool_choice: params.tool_choice } : {},
+    temperature: params.temperature,
+    maxTokens: params.maxTokens
+  });
+}
 async function index_src_default(req) {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -825,7 +862,7 @@ async function runGameLoop(client, gameId, initialState, config) {
       try {
         const { system, user } = buildSummaryPrompt(round - 1, prevTurns, state.agents);
         const tSummary = Date.now();
-        const completion = await client.ai.chat.completions.create({
+        const completion = await callLlm(client, {
           model: BACKEND_CONFIG.summaryModel,
           messages: [
             { role: "system", content: system },
@@ -887,7 +924,7 @@ async function runGameLoop(client, gameId, initialState, config) {
         const userMessage = buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections);
         const tools = buildToolDefinitions(aliveOpponents, validMoveDirections);
         const t0 = Date.now();
-        const completion = await client.ai.chat.completions.create({
+        const completion = await callLlm(client, {
           model: turnAgent.modelId,
           messages: [
             { role: "system", content: systemPrompt },
@@ -901,7 +938,7 @@ async function runGameLoop(client, gameId, initialState, config) {
         console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId})`);
         rawResponse = completion;
         const message = completion.choices?.[0]?.message;
-        reasoning = message?.content ?? "";
+        reasoning = message?.content || message?.reasoning_content || "";
         const toolCall = message?.tool_calls?.[0];
         if (toolCall) {
           action = parseToolCall(toolCall);
