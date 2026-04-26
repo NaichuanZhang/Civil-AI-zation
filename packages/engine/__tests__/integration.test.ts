@@ -313,15 +313,28 @@ describe('Integration: Agent prompt building', () => {
     const personalView = buildPersonalView(state, 'opus');
     const aliveAgents = state.agents.filter((a) => a.status === 'alive');
 
-    const message = buildUserMessage(sharedView, personalView, aliveAgents);
+    const message = buildUserMessage(sharedView, personalView, aliveAgents, ['N', 'E']);
     expect(message).toContain('ROUND');
     expect(message).toContain('YOUR STATUS');
     expect(message).toContain('opus');
     expect(message).toContain('[FACING - can attack here]');
+    expect(message).toContain('Valid moves:');
+    expect(message).toContain('N (North)');
+    expect(message).toContain('E (East)');
+  });
+
+  it('shows boxed-in message when no valid moves', () => {
+    const state = createInitialState(DEFAULT_GAME_CONFIG);
+    const sharedView = buildSharedView(state);
+    const personalView = buildPersonalView(state, 'opus');
+    const aliveAgents = state.agents.filter((a) => a.status === 'alive');
+
+    const message = buildUserMessage(sharedView, personalView, aliveAgents, []);
+    expect(message).toContain('None — you are boxed in');
   });
 
   it('builds tool definitions with alive opponents', () => {
-    const tools = buildToolDefinitions(['sonnet', 'haiku']);
+    const tools = buildToolDefinitions(['sonnet', 'haiku'], ['N', 'S', 'E', 'W']);
     expect(tools).toHaveLength(4);
     const attack = tools.find((t) => t.function.name === 'attack')!;
     expect(attack.function.description).toContain('facing');
@@ -329,9 +342,33 @@ describe('Integration: Agent prompt building', () => {
   });
 
   it('omits attack tool when no opponents', () => {
-    const tools = buildToolDefinitions([]);
+    const tools = buildToolDefinitions([], ['N', 'S', 'E', 'W']);
     expect(tools).toHaveLength(3);
     expect(tools.find((t) => t.function.name === 'attack')).toBeUndefined();
+  });
+
+  it('omits move tool when no valid directions', () => {
+    const tools = buildToolDefinitions(['sonnet', 'haiku'], []);
+    expect(tools.find((t) => t.function.name === 'move')).toBeUndefined();
+    expect(tools.find((t) => t.function.name === 'attack')).toBeDefined();
+    expect(tools.find((t) => t.function.name === 'turn')).toBeDefined();
+    expect(tools.find((t) => t.function.name === 'rest')).toBeDefined();
+  });
+
+  it('restricts move enum to only valid directions', () => {
+    const tools = buildToolDefinitions(['sonnet'], ['N', 'E']);
+    const moveTool = tools.find((t) => t.function.name === 'move')!;
+    const params = moveTool.function.parameters as { properties: { direction: { enum: string[] } } };
+    expect(params.properties.direction.enum).toEqual(['N', 'E']);
+  });
+
+  it('omits both move and attack when no directions and no opponents', () => {
+    const tools = buildToolDefinitions([], []);
+    expect(tools).toHaveLength(2);
+    expect(tools.find((t) => t.function.name === 'move')).toBeUndefined();
+    expect(tools.find((t) => t.function.name === 'attack')).toBeUndefined();
+    expect(tools.find((t) => t.function.name === 'turn')).toBeDefined();
+    expect(tools.find((t) => t.function.name === 'rest')).toBeDefined();
   });
 });
 

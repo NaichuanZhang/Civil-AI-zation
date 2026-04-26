@@ -5,6 +5,7 @@ import {
   isAdjacent,
   getDirectionBetween,
   isPositionOccupied,
+  getValidMoveDirections,
 } from '../src/grid.js';
 import type { AgentState } from '../src/types.js';
 
@@ -144,5 +145,82 @@ describe('isPositionOccupied', () => {
 
   it('returns false for position with eliminated agent', () => {
     expect(isPositionOccupied({ x: 2, y: 2 }, agents)).toBe(false);
+  });
+});
+
+describe('getValidMoveDirections', () => {
+  it('returns all four directions from center of empty 3x3 grid', () => {
+    const agents: AgentState[] = [
+      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 } }),
+    ];
+    const result = getValidMoveDirections({ x: 1, y: 1 }, 3, 3, agents);
+    expect(result).toHaveLength(4);
+    expect(result).toEqual(expect.arrayContaining(['N', 'S', 'E', 'W']));
+  });
+
+  it('excludes out-of-bounds directions at corner (0,0)', () => {
+    const agents: AgentState[] = [
+      makeAgent({ agentId: 'opus', position: { x: 0, y: 0 } }),
+    ];
+    const result = getValidMoveDirections({ x: 0, y: 0 }, 3, 3, agents);
+    expect(result).toHaveLength(2);
+    expect(result).toContain('S');
+    expect(result).toContain('E');
+    expect(result).not.toContain('N');
+    expect(result).not.toContain('W');
+  });
+
+  it('excludes out-of-bounds directions at corner (2,2)', () => {
+    const agents: AgentState[] = [
+      makeAgent({ agentId: 'opus', position: { x: 2, y: 2 } }),
+    ];
+    const result = getValidMoveDirections({ x: 2, y: 2 }, 3, 3, agents);
+    expect(result).toHaveLength(2);
+    expect(result).toContain('N');
+    expect(result).toContain('W');
+    expect(result).not.toContain('S');
+    expect(result).not.toContain('E');
+  });
+
+  it('excludes directions with occupied cells', () => {
+    const agents: AgentState[] = [
+      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 } }),
+      makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
+      makeAgent({ agentId: 'haiku', position: { x: 2, y: 1 } }),
+    ];
+    const result = getValidMoveDirections({ x: 1, y: 1 }, 3, 3, agents);
+    expect(result).toHaveLength(2);
+    expect(result).toContain('S');
+    expect(result).toContain('W');
+    expect(result).not.toContain('N');
+    expect(result).not.toContain('E');
+  });
+
+  it('ignores eliminated agents when checking occupancy', () => {
+    const agents: AgentState[] = [
+      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 } }),
+      makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 }, status: 'eliminated' }),
+    ];
+    const result = getValidMoveDirections({ x: 1, y: 1 }, 3, 3, agents);
+    expect(result).toHaveLength(4);
+    expect(result).toContain('N');
+  });
+
+  it('returns empty array on 1x1 grid', () => {
+    const agents: AgentState[] = [
+      makeAgent({ agentId: 'opus', position: { x: 0, y: 0 } }),
+    ];
+    const result = getValidMoveDirections({ x: 0, y: 0 }, 1, 1, agents);
+    expect(result).toHaveLength(0);
+  });
+
+  it('returns empty array when completely boxed in by walls and agents', () => {
+    const agents: AgentState[] = [
+      makeAgent({ agentId: 'opus', position: { x: 0, y: 0 } }),
+      makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
+      makeAgent({ agentId: 'haiku', position: { x: 0, y: 1 } }),
+    ];
+    const result = getValidMoveDirections({ x: 0, y: 0 }, 3, 3, agents);
+    expect(result).toHaveLength(0);
   });
 });

@@ -48,3 +48,17 @@ export function isPositionOccupied(
     (a) => a.status === 'alive' && a.position.x === pos.x && a.position.y === pos.y,
   );
 }
+
+const ALL_DIRECTIONS: readonly Direction[] = ['N', 'S', 'E', 'W'];
+
+export function getValidMoveDirections(
+  pos: Position,
+  width: number,
+  height: number,
+  agents: readonly AgentState[],
+): readonly Direction[] {
+  return ALL_DIRECTIONS.filter((dir) => {
+    const dest = getAdjacentPosition(pos, dir);
+    return isInBounds(dest, width, height) && !isPositionOccupied(dest, agents);
+  });
+}

@@ -16,6 +16,7 @@ import {
   appendMemory,
   buildMemoryEntry,
   buildSummaryPrompt,
+  getValidMoveDirections,
 } from './engine.ts';
 import type {
   AgentState,
@@ -200,9 +201,17 @@ async function runGameLoop(
 
       const sharedView = buildSharedView(state);
       const personalView = buildPersonalView(state, turnAgent.agentId);
-      const aliveOpponents = state.agents
-        .filter((a) => a.status === 'alive' && a.agentId !== turnAgent.agentId)
+      const aliveAgents = state.agents.filter((a) => a.status === 'alive');
+      const aliveOpponents = aliveAgents
+        .filter((a) => a.agentId !== turnAgent.agentId)
         .map((a) => a.agentId);
+      const currentAgentState = state.agents.find((a) => a.agentId === turnAgent.agentId)!;
+      const validMoveDirections = getValidMoveDirections(
+        currentAgentState.position,
+        config.mapWidth,
+        config.mapHeight,
+        aliveAgents,
+      );
 
       let action: AgentAction;
       let rawResponse: unknown = null;
@@ -210,8 +219,8 @@ async function runGameLoop(
 
       try {
         const systemPrompt = buildSystemPrompt(turnAgent.agentId);
-        const userMessage = buildUserMessage(sharedView, personalView, state.agents.filter((a) => a.status === 'alive'));
-        const tools = buildToolDefinitions(aliveOpponents);
+        const userMessage = buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections);
+        const tools = buildToolDefinitions(aliveOpponents, validMoveDirections);
 
         const t0 = Date.now();
         const completion = await client.ai.chat.completions.create({

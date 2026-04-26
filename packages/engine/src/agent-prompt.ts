@@ -2,6 +2,7 @@ import type {
   AgentId,
   AgentAction,
   AgentState,
+  Direction,
   SharedGameView,
   PersonalAgentView,
 } from './types.js';
@@ -49,6 +50,7 @@ export function buildUserMessage(
   sharedView: SharedGameView,
   personalView: PersonalAgentView,
   aliveAgents: readonly AgentState[],
+  validMoveDirections: readonly Direction[],
 ): string {
   const grid = buildGridVisual(aliveAgents, sharedView.mapWidth, sharedView.mapHeight);
 
@@ -90,6 +92,7 @@ ${eliminatedLines}
 YOUR STATUS:
 - HP: ${personalView.hp}, EP: ${personalView.ep}, Position: (${personalView.position.x},${personalView.position.y}), Facing: ${DIRECTION_NAMES[personalView.orientation]}
 - Adjacent cells: ${adjacentInfo}
+- Valid moves: ${validMoveDirections.length > 0 ? validMoveDirections.map((d) => `${d} (${DIRECTION_NAMES[d]})`).join(', ') : 'None — you are boxed in'}
 - ${buildAttackTargetInfo(personalView, aliveAgents, sharedView.mapWidth, sharedView.mapHeight)}
 
 YOUR MEMORY:
@@ -112,33 +115,61 @@ export interface ToolDefinition {
 
 export function buildToolDefinitions(
   aliveOpponents: readonly AgentId[],
+  validMoveDirections: readonly Direction[],
 ): readonly ToolDefinition[] {
-  const tools: ToolDefinition[] = [
-    {
+  const tools: ToolDefinition[] = [];
+
+  if (validMoveDirections.length > 0) {
+    tools.push({
       type: 'function',
       function: {
         name: 'move',
         description:
-          'Move 1 cell in a cardinal direction. Sets your facing to that direction.',
+          'Move 1 cell in a cardinal direction. Costs 1 EP. Sets your facing to that direction. Cannot move outside map bounds or onto a cell occupied by another agent. Only the listed directions are valid this turn.',
         parameters: {
           type: 'object',
           properties: {
             direction: {
               type: 'string',
-              enum: ['N', 'S', 'E', 'W'],
+              enum: [...validMoveDirections],
               description: 'Direction to move',
             },
           },
           required: ['direction'],
         },
       },
-    },
+    });
+  }
+
+  if (aliveOpponents.length > 0) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'attack',
+        description:
+          'Attack an adjacent agent in your facing direction. Costs 1 EP. The target must be directly in the cell you are facing — you cannot attack diagonally, at range, or behind you. Use turn(direction) to change facing first if needed. Damage depends on how you hit relative to the target\'s facing: front=2, side=5, back=7.',
+        parameters: {
+          type: 'object',
+          properties: {
+            target: {
+              type: 'string',
+              enum: [...aliveOpponents],
+              description: 'ID of the agent to attack',
+            },
+          },
+          required: ['target'],
+        },
+      },
+    });
+  }
+
+  tools.push(
     {
       type: 'function',
       function: {
         name: 'turn',
         description:
-          'Change your facing direction without moving. Costs 1 EP. Use this to face a target before attacking.',
+          'Change your facing direction without moving. Costs 1 EP. Does not change your position. Use this to face a target before attacking, or to reorient defensively.',
         parameters: {
           type: 'object',
           properties: {
@@ -156,7 +187,7 @@ export function buildToolDefinitions(
       type: 'function',
       function: {
         name: 'rest',
-        description: 'Rest this turn. Gain +1 EP next turn.',
+        description: 'Skip your action this turn. Costs 0 EP. You will gain +1 bonus EP next turn (giving you 2 EP total).',
         parameters: {
           type: 'object',
           properties: {},
@@ -164,29 +195,7 @@ export function buildToolDefinitions(
         },
       },
     },
-  ];
-
-  if (aliveOpponents.length > 0) {
-    tools.splice(1, 0, {
-      type: 'function',
-      function: {
-        name: 'attack',
-        description:
-          'Attack the agent directly in front of you (in your facing direction). You must be facing the target.',
-        parameters: {
-          type: 'object',
-          properties: {
-            target: {
-              type: 'string',
-              enum: [...aliveOpponents],
-              description: 'ID of the agent to attack',
-            },
-          },
-          required: ['target'],
-        },
-      },
-    });
-  }
+  );
 
   return tools;
 }

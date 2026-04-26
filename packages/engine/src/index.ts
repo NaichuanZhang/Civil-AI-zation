@@ -41,6 +41,7 @@ export {
   isAdjacent,
   getDirectionBetween,
   isPositionOccupied,
+  getValidMoveDirections,
 } from './grid.js';
 
 export {
