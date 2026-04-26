@@ -10,7 +10,7 @@ describe('calculateDamage', () => {
     const result = calculateDamage(
       { x: 2, y: 2 },
       { x: 2, y: 1 },
-      'N', // target faces N = same as attack direction → front
+      'up', // target faces N = same as attack direction → front
       5,
     );
     expect(result.hitZone).toBe('front');
@@ -22,7 +22,7 @@ describe('calculateDamage', () => {
     const result = calculateDamage(
       { x: 2, y: 2 },
       { x: 2, y: 1 },
-      'S', // target faces S = opposite of N attack → back
+      'down', // target faces S = opposite of N attack → back
       5,
     );
     expect(result.hitZone).toBe('back');
@@ -34,7 +34,7 @@ describe('calculateDamage', () => {
     const result = calculateDamage(
       { x: 2, y: 2 },
       { x: 2, y: 1 },
-      'E', // target faces E = perpendicular to N attack → side
+      'right', // target faces E = perpendicular to N attack → side
       5,
     );
     expect(result.hitZone).toBe('side');
@@ -46,7 +46,7 @@ describe('calculateDamage', () => {
     const result = calculateDamage(
       { x: 2, y: 2 },
       { x: 2, y: 1 },
-      'W',
+      'left',
       5,
     );
     expect(result.hitZone).toBe('side');
@@ -58,7 +58,7 @@ describe('calculateDamage', () => {
     const result = calculateDamage(
       { x: 1, y: 2 },
       { x: 2, y: 2 },
-      'E', // target faces E = same as attack direction → front
+      'right', // target faces E = same as attack direction → front
       5,
     );
     expect(result.hitZone).toBe('front');
@@ -69,7 +69,7 @@ describe('calculateDamage', () => {
     const result = calculateDamage(
       { x: 2, y: 2 },
       { x: 2, y: 1 },
-      'N',
+      'up',
       7, // front: floor(7 * 0.5) = floor(3.5) = 3
     );
     expect(result.damage).toBe(3);
@@ -79,7 +79,7 @@ describe('calculateDamage', () => {
     const result = calculateDamage(
       { x: 2, y: 2 },
       { x: 2, y: 1 },
-      'S',
+      'down',
       3, // back: floor(3 * 1.5) = floor(4.5) = 4
     );
     expect(result.damage).toBe(4);
@@ -87,7 +87,7 @@ describe('calculateDamage', () => {
 
   it('throws for non-adjacent positions', () => {
     expect(() =>
-      calculateDamage({ x: 0, y: 0 }, { x: 2, y: 2 }, 'N', 5),
+      calculateDamage({ x: 0, y: 0 }, { x: 2, y: 2 }, 'up', 5),
     ).toThrow();
   });
 });

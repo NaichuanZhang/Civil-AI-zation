@@ -11,10 +11,10 @@ export function appendMemory(
 }
 
 const DIRECTION_NAMES: Record<string, string> = {
-  N: 'North',
-  S: 'South',
-  E: 'East',
-  W: 'West',
+  up: 'Up',
+  down: 'Down',
+  left: 'Left',
+  right: 'Right',
 };
 
 export function buildMemoryEntry(

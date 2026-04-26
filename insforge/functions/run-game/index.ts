@@ -29,21 +29,21 @@ var AGENT_CONFIG_MAP = {
     speed: 2,
     hp: 25,
     startPosition: { x: 0, y: 2 },
-    startOrientation: "N"
+    startOrientation: "up"
   },
   sonnet: {
     modelId: "openai/gpt-4o-mini",
     speed: 3,
     hp: 20,
     startPosition: { x: 2, y: 2 },
-    startOrientation: "W"
+    startOrientation: "left"
   },
   haiku: {
     modelId: "openai/gpt-4o-mini",
     speed: 4,
     hp: 15,
     startPosition: { x: 1, y: 0 },
-    startOrientation: "S"
+    startOrientation: "down"
   }
 };
 var AGENT_INITIAL_HP = Object.fromEntries(
@@ -69,10 +69,10 @@ var DEFAULT_GAME_CONFIG = {
 
 // packages/engine/src/grid.ts
 var DIRECTION_DELTAS = {
-  N: { x: 0, y: -1 },
-  S: { x: 0, y: 1 },
-  E: { x: 1, y: 0 },
-  W: { x: -1, y: 0 }
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  right: { x: 1, y: 0 },
+  left: { x: -1, y: 0 }
 };
 function isInBounds(pos, width, height) {
   return pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height;
@@ -84,10 +84,10 @@ function getAdjacentPosition(pos, dir) {
 function getDirectionBetween(from, to) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  if (dx === 0 && dy === -1) return "N";
-  if (dx === 0 && dy === 1) return "S";
-  if (dx === 1 && dy === 0) return "E";
-  if (dx === -1 && dy === 0) return "W";
+  if (dx === 0 && dy === -1) return "up";
+  if (dx === 0 && dy === 1) return "down";
+  if (dx === 1 && dy === 0) return "right";
+  if (dx === -1 && dy === 0) return "left";
   return null;
 }
 function isPositionOccupied(pos, agents) {
@@ -95,7 +95,7 @@ function isPositionOccupied(pos, agents) {
     (a) => a.status === "alive" && a.position.x === pos.x && a.position.y === pos.y
   );
 }
-var ALL_DIRECTIONS = ["N", "S", "E", "W"];
+var ALL_DIRECTIONS = ["up", "down", "left", "right"];
 function getValidMoveDirections(pos, width, height, agents) {
   return ALL_DIRECTIONS.filter((dir) => {
     const dest = getAdjacentPosition(pos, dir);
@@ -105,10 +105,10 @@ function getValidMoveDirections(pos, width, height, agents) {
 
 // packages/engine/src/orientation.ts
 var OPPOSITES = {
-  N: "S",
-  S: "N",
-  E: "W",
-  W: "E"
+  up: "down",
+  down: "up",
+  left: "right",
+  right: "left"
 };
 function getOppositeDirection(dir) {
   return OPPOSITES[dir];
@@ -216,10 +216,10 @@ function appendMemory(currentMemory, entry, cap) {
   return updated.slice(updated.length - cap);
 }
 var DIRECTION_NAMES = {
-  N: "North",
-  S: "South",
-  E: "East",
-  W: "West"
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right"
 };
 function buildMemoryEntry(round, _agentId, result, _agents) {
   switch (result.type) {
@@ -441,10 +441,10 @@ function checkWinCondition(state) {
 
 // packages/engine/src/agent-prompt.ts
 var DIRECTION_NAMES2 = {
-  N: "North",
-  S: "South",
-  E: "East",
-  W: "West"
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right"
 };
 function buildSystemPrompt(agentId) {
   return `You are playing Civil-AI-zation, a turn-based arena battle game on a 3x3 grid.
@@ -454,7 +454,7 @@ Survive. Be the last agent standing. Eliminate opponents by reducing their HP to
 
 RULES:
 - You have 1 EP per turn (2 if you rested last turn). Each action costs 1 EP.
-- move(direction): Move 1 cell N/S/E/W. Sets your facing to that direction.
+- move(direction): Move 1 cell up/down/left/right. Sets your facing to that direction.
 - attack(target): Attack the agent directly in front of you (the cell you are facing). Damage depends on orientation:
   - Front (target faces you): 2 damage
   - Side (perpendicular): 5 damage
@@ -466,8 +466,25 @@ RULES:
 - Game ends when 1 agent remains or after round 30 (highest HP wins).
 
 COORDINATE SYSTEM:
-- (0,0) is top-left. X increases right, Y increases down.
-- North = -Y, South = +Y, West = -X, East = +X.
+- The 3x3 grid uses standard screen coordinates:
+  * (0,0) is the TOP-LEFT corner
+  * X-axis: 0 \u2192 1 \u2192 2 (left to right)
+  * Y-axis: 0 \u2192 1 \u2192 2 (top to bottom)
+
+DIRECTIONS (use these exact words in move/turn actions):
+- up: Move UP (decreases Y). Example: (1,2) \u2192 (1,1)
+- down: Move DOWN (increases Y). Example: (1,0) \u2192 (1,1)
+- left: Move LEFT (decreases X). Example: (2,1) \u2192 (1,1)
+- right: Move RIGHT (increases X). Example: (0,1) \u2192 (1,1)
+
+IMPORTANT: Lower Y values are HIGHER on the grid!
+- Position (1,1) is ABOVE (1,2) because 1 < 2
+- Position (1,0) is at the TOP of the grid
+- Position (1,2) is at the BOTTOM of the grid
+
+Example: If you are at (2,2) [bottom-right]:
+- Agent at (1,1) is UP and LEFT from you (not below!)
+- To reach them: move up to (2,1), then move left to (1,1)
 
 YOUR IDENTITY:
 ${AGENT_PERSONALITIES[agentId]}
@@ -562,7 +579,7 @@ function buildToolDefinitions(aliveOpponents, validMoveDirections) {
           properties: {
             direction: {
               type: "string",
-              enum: ["N", "S", "E", "W"],
+              enum: ["up", "down", "left", "right"],
               description: "Direction to face"
             }
           },
@@ -592,7 +609,7 @@ function parseToolCall(toolCall) {
     switch (name) {
       case "move": {
         const dir = args["direction"];
-        if (dir === "N" || dir === "S" || dir === "E" || dir === "W") {
+        if (dir === "up" || dir === "down" || dir === "left" || dir === "right") {
           return { type: "move", direction: dir };
         }
         return { type: "rest" };
@@ -606,7 +623,7 @@ function parseToolCall(toolCall) {
       }
       case "turn": {
         const turnDir = args["direction"];
-        if (turnDir === "N" || turnDir === "S" || turnDir === "E" || turnDir === "W") {
+        if (turnDir === "up" || turnDir === "down" || turnDir === "left" || turnDir === "right") {
           return { type: "turn", direction: turnDir };
         }
         return { type: "rest" };
@@ -622,10 +639,10 @@ function parseToolCall(toolCall) {
 }
 function buildGridVisual(agents, width, height) {
   const dirArrow = {
-    N: "\u2191",
-    S: "\u2193",
-    E: "\u2192",
-    W: "\u2190"
+    up: "\u2191",
+    down: "\u2193",
+    left: "\u2190",
+    right: "\u2192"
   };
   const lines = [];
   lines.push("  " + Array.from({ length: width }, (_, i) => i).join(" "));
@@ -646,12 +663,12 @@ function buildGridVisual(agents, width, height) {
   return lines.join("\n");
 }
 function buildAdjacentInfo(personal, aliveAgents, width, height) {
-  const dirs = ["N", "S", "E", "W"];
+  const dirs = ["up", "down", "left", "right"];
   const deltas = {
-    N: { dx: 0, dy: -1 },
-    S: { dx: 0, dy: 1 },
-    E: { dx: 1, dy: 0 },
-    W: { dx: -1, dy: 0 }
+    up: { dx: 0, dy: -1 },
+    down: { dx: 0, dy: 1 },
+    right: { dx: 1, dy: 0 },
+    left: { dx: -1, dy: 0 }
   };
   return dirs.map((d) => {
     const delta = deltas[d];
@@ -672,10 +689,10 @@ function buildAdjacentInfo(personal, aliveAgents, width, height) {
 }
 function buildAttackTargetInfo(personal, aliveAgents, width, height) {
   const deltas = {
-    N: { dx: 0, dy: -1 },
-    S: { dx: 0, dy: 1 },
-    E: { dx: 1, dy: 0 },
-    W: { dx: -1, dy: 0 }
+    up: { dx: 0, dy: -1 },
+    down: { dx: 0, dy: 1 },
+    right: { dx: 1, dy: 0 },
+    left: { dx: -1, dy: 0 }
   };
   const delta = deltas[personal.orientation];
   const fx = personal.position.x + delta.dx;

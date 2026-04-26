@@ -11,7 +11,7 @@ const makeAgent = (
   hp: 20,
   ep: 1,
   position: { x: 0, y: 0 },
-  orientation: 'N',
+  orientation: 'up',
   status: 'alive',
   eliminatedAtRound: null,
   memory: [],

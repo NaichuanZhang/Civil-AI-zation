@@ -9,10 +9,10 @@ import type {
 import { AGENT_PERSONALITIES } from './game-config.js';
 
 const DIRECTION_NAMES: Record<string, string> = {
-  N: 'North',
-  S: 'South',
-  E: 'East',
-  W: 'West',
+  up: 'Up',
+  down: 'Down',
+  left: 'Left',
+  right: 'Right',
 };
 
 export function buildSystemPrompt(agentId: AgentId): string {
@@ -23,7 +23,7 @@ Survive. Be the last agent standing. Eliminate opponents by reducing their HP to
 
 RULES:
 - You have 1 EP per turn (2 if you rested last turn). Each action costs 1 EP.
-- move(direction): Move 1 cell N/S/E/W. Sets your facing to that direction.
+- move(direction): Move 1 cell up/down/left/right. Sets your facing to that direction.
 - attack(target): Attack the agent directly in front of you (the cell you are facing). Damage depends on orientation:
   - Front (target faces you): 2 damage
   - Side (perpendicular): 5 damage
@@ -35,8 +35,25 @@ RULES:
 - Game ends when 1 agent remains or after round 30 (highest HP wins).
 
 COORDINATE SYSTEM:
-- (0,0) is top-left. X increases right, Y increases down.
-- North = -Y, South = +Y, West = -X, East = +X.
+- The 3x3 grid uses standard screen coordinates:
+  * (0,0) is the TOP-LEFT corner
+  * X-axis: 0 → 1 → 2 (left to right)
+  * Y-axis: 0 → 1 → 2 (top to bottom)
+
+DIRECTIONS (use these exact words in move/turn actions):
+- up: Move UP (decreases Y). Example: (1,2) → (1,1)
+- down: Move DOWN (increases Y). Example: (1,0) → (1,1)
+- left: Move LEFT (decreases X). Example: (2,1) → (1,1)
+- right: Move RIGHT (increases X). Example: (0,1) → (1,1)
+
+IMPORTANT: Lower Y values are HIGHER on the grid!
+- Position (1,1) is ABOVE (1,2) because 1 < 2
+- Position (1,0) is at the TOP of the grid
+- Position (1,2) is at the BOTTOM of the grid
+
+Example: If you are at (2,2) [bottom-right]:
+- Agent at (1,1) is UP and LEFT from you (not below!)
+- To reach them: move up to (2,1), then move left to (1,1)
 
 YOUR IDENTITY:
 ${AGENT_PERSONALITIES[agentId]}
@@ -173,7 +190,7 @@ export function buildToolDefinitions(
           properties: {
             direction: {
               type: 'string',
-              enum: ['N', 'S', 'E', 'W'],
+              enum: ['up', 'down', 'left', 'right'],
               description: 'Direction to face',
             },
           },
@@ -208,7 +225,7 @@ export function parseToolCall(toolCall: {
     switch (name) {
       case 'move': {
         const dir = args['direction'];
-        if (dir === 'N' || dir === 'S' || dir === 'E' || dir === 'W') {
+        if (dir === 'up' || dir === 'down' || dir === 'left' || dir === 'right') {
           return { type: 'move', direction: dir };
         }
         return { type: 'rest' };
@@ -223,7 +240,7 @@ export function parseToolCall(toolCall: {
       }
       case 'turn': {
         const turnDir = args['direction'];
-        if (turnDir === 'N' || turnDir === 'S' || turnDir === 'E' || turnDir === 'W') {
+        if (turnDir === 'up' || turnDir === 'down' || turnDir === 'left' || turnDir === 'right') {
           return { type: 'turn', direction: turnDir };
         }
         return { type: 'rest' };
@@ -244,10 +261,10 @@ function buildGridVisual(
   height: number,
 ): string {
   const dirArrow: Record<string, string> = {
-    N: '↑',
-    S: '↓',
-    E: '→',
-    W: '←',
+    up: '↑',
+    down: '↓',
+    left: '←',
+    right: '→',
   };
 
   const lines: string[] = [];
@@ -275,12 +292,12 @@ function buildAdjacentInfo(
   width: number,
   height: number,
 ): string {
-  const dirs = ['N', 'S', 'E', 'W'] as const;
+  const dirs = ['up', 'down', 'left', 'right'] as const;
   const deltas: Record<string, { dx: number; dy: number }> = {
-    N: { dx: 0, dy: -1 },
-    S: { dx: 0, dy: 1 },
-    E: { dx: 1, dy: 0 },
-    W: { dx: -1, dy: 0 },
+    up: { dx: 0, dy: -1 },
+    down: { dx: 0, dy: 1 },
+    right: { dx: 1, dy: 0 },
+    left: { dx: -1, dy: 0 },
   };
 
   return dirs
@@ -310,10 +327,10 @@ function buildAttackTargetInfo(
   height: number,
 ): string {
   const deltas: Record<string, { dx: number; dy: number }> = {
-    N: { dx: 0, dy: -1 },
-    S: { dx: 0, dy: 1 },
-    E: { dx: 1, dy: 0 },
-    W: { dx: -1, dy: 0 },
+    up: { dx: 0, dy: -1 },
+    down: { dx: 0, dy: 1 },
+    right: { dx: 1, dy: 0 },
+    left: { dx: -1, dy: 0 },
   };
   const delta = deltas[personal.orientation]!;
   const fx = personal.position.x + delta.dx;

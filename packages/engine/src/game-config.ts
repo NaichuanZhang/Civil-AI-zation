@@ -51,21 +51,21 @@ export const AGENT_CONFIG_MAP = {
     speed: 2,
     hp: 25,
     startPosition: { x: 0, y: 2 },
-    startOrientation: 'N' as const,
+    startOrientation: 'up' as const,
   },
   sonnet: {
     modelId: 'openai/gpt-4o-mini',
     speed: 3,
     hp: 20,
     startPosition: { x: 2, y: 2 },
-    startOrientation: 'W' as const,
+    startOrientation: 'left' as const,
   },
   haiku: {
     modelId: 'openai/gpt-4o-mini',
     speed: 4,
     hp: 15,
     startPosition: { x: 1, y: 0 },
-    startOrientation: 'S' as const,
+    startOrientation: 'down' as const,
   },
 } as const;
 

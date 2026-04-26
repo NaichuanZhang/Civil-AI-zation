@@ -43,7 +43,7 @@ describe('createInitialState', () => {
   it('sets correct positions and orientations', () => {
     const opus = state.agents.find((a) => a.agentId === 'opus')!;
     expect(opus.position).toEqual({ x: 0, y: 2 });
-    expect(opus.orientation).toBe('N');
+    expect(opus.orientation).toBe('up');
   });
 
   it('assigns unique turnOrder values', () => {
@@ -143,6 +143,6 @@ describe('buildPersonalView', () => {
     expect(view.ep).toBe(1);
     expect(view.memory).toEqual([]);
     expect(view.position).toEqual({ x: 0, y: 2 });
-    expect(view.orientation).toBe('N');
+    expect(view.orientation).toBe('up');
   });
 });

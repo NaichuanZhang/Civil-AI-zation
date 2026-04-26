@@ -8,13 +8,13 @@ import type { Direction, HitZone } from '../src/types.js';
 
 describe('getOppositeDirection', () => {
   it('N <-> S', () => {
-    expect(getOppositeDirection('N')).toBe('S');
-    expect(getOppositeDirection('S')).toBe('N');
+    expect(getOppositeDirection('up')).toBe('down');
+    expect(getOppositeDirection('down')).toBe('up');
   });
 
   it('E <-> W', () => {
-    expect(getOppositeDirection('E')).toBe('W');
-    expect(getOppositeDirection('W')).toBe('E');
+    expect(getOppositeDirection('right')).toBe('left');
+    expect(getOppositeDirection('left')).toBe('right');
   });
 });
 
@@ -29,26 +29,26 @@ describe('getHitZone', () => {
     expected: HitZone;
   }> = [
     // Attack from South (attackDir=N), target facing N → same → Front
-    { attackDir: 'N', targetFacing: 'N', expected: 'front' },
+    { attackDir: 'up', targetFacing: 'up', expected: 'front' },
     // Attack from South (attackDir=N), target facing S → opposite → Back
-    { attackDir: 'N', targetFacing: 'S', expected: 'back' },
-    { attackDir: 'N', targetFacing: 'E', expected: 'side' },
-    { attackDir: 'N', targetFacing: 'W', expected: 'side' },
+    { attackDir: 'up', targetFacing: 'down', expected: 'back' },
+    { attackDir: 'up', targetFacing: 'right', expected: 'side' },
+    { attackDir: 'up', targetFacing: 'left', expected: 'side' },
 
-    { attackDir: 'S', targetFacing: 'S', expected: 'front' },
-    { attackDir: 'S', targetFacing: 'N', expected: 'back' },
-    { attackDir: 'S', targetFacing: 'E', expected: 'side' },
-    { attackDir: 'S', targetFacing: 'W', expected: 'side' },
+    { attackDir: 'down', targetFacing: 'down', expected: 'front' },
+    { attackDir: 'down', targetFacing: 'up', expected: 'back' },
+    { attackDir: 'down', targetFacing: 'right', expected: 'side' },
+    { attackDir: 'down', targetFacing: 'left', expected: 'side' },
 
-    { attackDir: 'E', targetFacing: 'E', expected: 'front' },
-    { attackDir: 'E', targetFacing: 'W', expected: 'back' },
-    { attackDir: 'E', targetFacing: 'N', expected: 'side' },
-    { attackDir: 'E', targetFacing: 'S', expected: 'side' },
+    { attackDir: 'right', targetFacing: 'right', expected: 'front' },
+    { attackDir: 'right', targetFacing: 'left', expected: 'back' },
+    { attackDir: 'right', targetFacing: 'up', expected: 'side' },
+    { attackDir: 'right', targetFacing: 'down', expected: 'side' },
 
-    { attackDir: 'W', targetFacing: 'W', expected: 'front' },
-    { attackDir: 'W', targetFacing: 'E', expected: 'back' },
-    { attackDir: 'W', targetFacing: 'N', expected: 'side' },
-    { attackDir: 'W', targetFacing: 'S', expected: 'side' },
+    { attackDir: 'left', targetFacing: 'left', expected: 'front' },
+    { attackDir: 'left', targetFacing: 'right', expected: 'back' },
+    { attackDir: 'left', targetFacing: 'up', expected: 'side' },
+    { attackDir: 'left', targetFacing: 'down', expected: 'side' },
   ];
 
   cases.forEach(({ attackDir, targetFacing, expected }) => {

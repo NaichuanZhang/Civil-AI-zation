@@ -10,7 +10,7 @@ const makeAgent = (
   hp: 20,
   ep: 1,
   position: { x: 2, y: 2 },
-  orientation: 'N',
+  orientation: 'up',
   status: 'alive',
   eliminatedAtRound: null,
   memory: [],
@@ -64,10 +64,10 @@ describe('buildMemoryEntry', () => {
       type: 'move',
       from: { x: 2, y: 2 },
       to: { x: 2, y: 1 },
-      newOrientation: 'N',
+      newOrientation: 'up',
     };
     const entry = buildMemoryEntry(1, 'opus', result, agents);
-    expect(entry).toBe('Round 1: I moved North to (2,1), facing North.');
+    expect(entry).toBe('Round 1: I moved Up to (2,1), facing Up.');
   });
 
   it('builds attack entry', () => {

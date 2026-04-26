@@ -44,9 +44,9 @@ describe('Integration: Full game simulation', () => {
     const config = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 2, hp: 25, position: { x: 1, y: 1 }, orientation: 'N' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 0 }, orientation: 'N' as const },
-        { agentId: 'haiku' as const, modelId: 'test', speed: 1, hp: 15, position: { x: 2, y: 2 }, orientation: 'E' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 2, hp: 25, position: { x: 1, y: 1 }, orientation: 'up' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 0 }, orientation: 'up' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 1, hp: 15, position: { x: 2, y: 2 }, orientation: 'right' as const },
       ],
     };
 
@@ -71,7 +71,7 @@ describe('Integration: Full game simulation', () => {
   it('V4: no agent moves off-grid or overlaps', () => {
     let moveCount = 0;
     const decider: ActionDecider = () => {
-      const directions = ['N', 'S', 'E', 'W'] as const;
+      const directions = ['up', 'down', 'right', 'left'] as const;
       const dir = directions[moveCount % 4]!;
       moveCount++;
       return { type: 'move', direction: dir };
@@ -106,9 +106,9 @@ describe('Integration: Full game simulation', () => {
     const config = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 25, position: { x: 0, y: 2 }, orientation: 'N' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 20, position: { x: 1, y: 1 }, orientation: 'N' as const },
-        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 7, position: { x: 1, y: 0 }, orientation: 'S' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 25, position: { x: 0, y: 2 }, orientation: 'up' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 20, position: { x: 1, y: 1 }, orientation: 'up' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 7, position: { x: 1, y: 0 }, orientation: 'down' as const },
       ],
     };
 
@@ -168,9 +168,9 @@ describe('Integration: Full game simulation', () => {
     const config = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 0, y: 2 }, orientation: 'N' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 1 }, orientation: 'N' as const },
-        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 1, y: 0 }, orientation: 'S' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 0, y: 2 }, orientation: 'up' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 1 }, orientation: 'up' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 1, y: 0 }, orientation: 'down' as const },
       ],
     };
 
@@ -183,7 +183,7 @@ describe('Integration: Full game simulation', () => {
 
     // R2: sonnet moves W to (0,1), now facing W
     state = processRound(state, (agentId) => {
-      if (agentId === 'sonnet') return { type: 'move', direction: 'W' };
+      if (agentId === 'sonnet') return { type: 'move', direction: 'left' };
       return { type: 'rest' };
     });
 
@@ -202,9 +202,9 @@ describe('Integration: Full game simulation', () => {
     const config2 = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 1, y: 2 }, orientation: 'N' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 1 }, orientation: 'N' as const },
-        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 1, y: 0 }, orientation: 'S' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 1, y: 2 }, orientation: 'up' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 1 }, orientation: 'up' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 1, y: 0 }, orientation: 'down' as const },
       ],
     };
 
@@ -222,9 +222,9 @@ describe('Integration: Full game simulation', () => {
     const config3 = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 2, y: 2 }, orientation: 'N' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 1 }, orientation: 'N' as const },
-        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 1, y: 0 }, orientation: 'S' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 2, y: 2 }, orientation: 'up' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 1, y: 1 }, orientation: 'up' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 1, y: 0 }, orientation: 'down' as const },
       ],
     };
 
@@ -238,7 +238,7 @@ describe('Integration: Full game simulation', () => {
 
     // R2: sonnet move E → (2,1) facing E
     state3 = processRound(state3, (agentId) => {
-      if (agentId === 'sonnet') return { type: 'move', direction: 'E' };
+      if (agentId === 'sonnet') return { type: 'move', direction: 'right' };
       return { type: 'rest' };
     });
 
@@ -252,9 +252,9 @@ describe('Integration: Full game simulation', () => {
     const config4 = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 2, y: 2 }, orientation: 'N' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 2, y: 1 }, orientation: 'S' as const },
-        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 0, y: 0 }, orientation: 'N' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 2, y: 2 }, orientation: 'up' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 2, y: 1 }, orientation: 'down' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 2, position: { x: 0, y: 0 }, orientation: 'up' as const },
       ],
     };
 
@@ -264,7 +264,7 @@ describe('Integration: Full game simulation', () => {
     // haiku faces N at (0,0) → move N invalid (wall) → rest
     state4 = processRound(state4, (agentId) => {
       if (agentId === 'sonnet') return { type: 'attack', target: 'opus' };
-      if (agentId === 'haiku') return { type: 'move', direction: 'S' };
+      if (agentId === 'haiku') return { type: 'move', direction: 'down' };
       return { type: 'rest' };
     });
 
@@ -272,15 +272,15 @@ describe('Integration: Full game simulation', () => {
 
     // R2: sonnet moves S to (2,2), now haiku at (0,1)
     state4 = processRound(state4, (agentId) => {
-      if (agentId === 'sonnet') return { type: 'move', direction: 'S' };
-      if (agentId === 'haiku') return { type: 'move', direction: 'S' };
+      if (agentId === 'sonnet') return { type: 'move', direction: 'down' };
+      if (agentId === 'haiku') return { type: 'move', direction: 'down' };
       return { type: 'rest' };
     });
 
     // R3: sonnet move W to face haiku direction
     state4 = processRound(state4, (agentId) => {
-      if (agentId === 'sonnet') return { type: 'move', direction: 'W' };
-      if (agentId === 'haiku') return { type: 'move', direction: 'S' };
+      if (agentId === 'sonnet') return { type: 'move', direction: 'left' };
+      if (agentId === 'haiku') return { type: 'move', direction: 'down' };
       return { type: 'rest' };
     });
 
@@ -313,14 +313,14 @@ describe('Integration: Agent prompt building', () => {
     const personalView = buildPersonalView(state, 'opus');
     const aliveAgents = state.agents.filter((a) => a.status === 'alive');
 
-    const message = buildUserMessage(sharedView, personalView, aliveAgents, ['N', 'E']);
+    const message = buildUserMessage(sharedView, personalView, aliveAgents, ['up', 'right']);
     expect(message).toContain('ROUND');
     expect(message).toContain('YOUR STATUS');
     expect(message).toContain('opus');
     expect(message).toContain('[FACING - can attack here]');
     expect(message).toContain('Valid moves:');
-    expect(message).toContain('N (North)');
-    expect(message).toContain('E (East)');
+    expect(message).toContain('up (Up)');
+    expect(message).toContain('right (Right)');
   });
 
   it('shows boxed-in message when no valid moves', () => {
@@ -334,7 +334,7 @@ describe('Integration: Agent prompt building', () => {
   });
 
   it('builds tool definitions with alive opponents', () => {
-    const tools = buildToolDefinitions(['sonnet', 'haiku'], ['N', 'S', 'E', 'W']);
+    const tools = buildToolDefinitions(['sonnet', 'haiku'], ['up', 'down', 'right', 'left']);
     expect(tools).toHaveLength(4);
     const attack = tools.find((t) => t.function.name === 'attack')!;
     expect(attack.function.description).toContain('facing');
@@ -342,7 +342,7 @@ describe('Integration: Agent prompt building', () => {
   });
 
   it('omits attack tool when no opponents', () => {
-    const tools = buildToolDefinitions([], ['N', 'S', 'E', 'W']);
+    const tools = buildToolDefinitions([], ['up', 'down', 'right', 'left']);
     expect(tools).toHaveLength(3);
     expect(tools.find((t) => t.function.name === 'attack')).toBeUndefined();
   });
@@ -356,10 +356,10 @@ describe('Integration: Agent prompt building', () => {
   });
 
   it('restricts move enum to only valid directions', () => {
-    const tools = buildToolDefinitions(['sonnet'], ['N', 'E']);
+    const tools = buildToolDefinitions(['sonnet'], ['up', 'right']);
     const moveTool = tools.find((t) => t.function.name === 'move')!;
     const params = moveTool.function.parameters as { properties: { direction: { enum: string[] } } };
-    expect(params.properties.direction.enum).toEqual(['N', 'E']);
+    expect(params.properties.direction.enum).toEqual(['up', 'right']);
   });
 
   it('omits both move and attack when no directions and no opponents', () => {
@@ -375,9 +375,9 @@ describe('Integration: Agent prompt building', () => {
 describe('Integration: parseToolCall', () => {
   it('parses move action', () => {
     const action = parseToolCall({
-      function: { name: 'move', arguments: '{"direction":"N"}' },
+      function: { name: 'move', arguments: '{"direction":"up"}' },
     });
-    expect(action).toEqual({ type: 'move', direction: 'N' });
+    expect(action).toEqual({ type: 'move', direction: 'up' });
   });
 
   it('parses attack action', () => {
@@ -389,9 +389,9 @@ describe('Integration: parseToolCall', () => {
 
   it('parses turn action', () => {
     const action = parseToolCall({
-      function: { name: 'turn', arguments: '{"direction":"S"}' },
+      function: { name: 'turn', arguments: '{"direction":"down"}' },
     });
-    expect(action).toEqual({ type: 'turn', direction: 'S' });
+    expect(action).toEqual({ type: 'turn', direction: 'down' });
   });
 
   it('parses rest action', () => {

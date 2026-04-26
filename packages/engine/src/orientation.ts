@@ -2,10 +2,10 @@ import type { Direction, HitZone } from './types.js';
 import { HIT_ZONE_MODIFIERS } from './game-config.js';
 
 const OPPOSITES: Record<Direction, Direction> = {
-  N: 'S',
-  S: 'N',
-  E: 'W',
-  W: 'E',
+  up: 'down',
+  down: 'up',
+  left: 'right',
+  right: 'left',
 };
 
 export function getOppositeDirection(dir: Direction): Direction {

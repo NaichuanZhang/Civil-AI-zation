@@ -1,10 +1,10 @@
 import type { Position, Direction, AgentState } from './types.js';
 
 const DIRECTION_DELTAS: Record<Direction, Position> = {
-  N: { x: 0, y: -1 },
-  S: { x: 0, y: 1 },
-  E: { x: 1, y: 0 },
-  W: { x: -1, y: 0 },
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  right: { x: 1, y: 0 },
+  left: { x: -1, y: 0 },
 };
 
 export function isInBounds(
@@ -33,10 +33,10 @@ export function getDirectionBetween(
   const dx = to.x - from.x;
   const dy = to.y - from.y;
 
-  if (dx === 0 && dy === -1) return 'N';
-  if (dx === 0 && dy === 1) return 'S';
-  if (dx === 1 && dy === 0) return 'E';
-  if (dx === -1 && dy === 0) return 'W';
+  if (dx === 0 && dy === -1) return 'up';
+  if (dx === 0 && dy === 1) return 'down';
+  if (dx === 1 && dy === 0) return 'right';
+  if (dx === -1 && dy === 0) return 'left';
   return null;
 }
 
@@ -49,7 +49,7 @@ export function isPositionOccupied(
   );
 }
 
-const ALL_DIRECTIONS: readonly Direction[] = ['N', 'S', 'E', 'W'];
+const ALL_DIRECTIONS: readonly Direction[] = ['up', 'down', 'left', 'right'];
 
 export function getValidMoveDirections(
   pos: Position,

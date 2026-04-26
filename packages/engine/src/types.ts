@@ -1,4 +1,4 @@
-export type Direction = 'N' | 'S' | 'E' | 'W';
+export type Direction = 'up' | 'down' | 'left' | 'right';
 export type AgentId = 'opus' | 'sonnet' | 'haiku';
 export type AgentStatus = 'alive' | 'eliminated';
 export type HitZone = 'front' | 'side' | 'back';

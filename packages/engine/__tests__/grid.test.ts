@@ -16,7 +16,7 @@ const makeAgent = (
   speed: 3,
   hp: 20,
   ep: 1,
-  orientation: 'N',
+  orientation: 'up',
   status: 'alive',
   eliminatedAtRound: null,
   memory: [],
@@ -52,19 +52,19 @@ describe('getAdjacentPosition', () => {
   const center = { x: 2, y: 2 };
 
   it('moves North (y-1)', () => {
-    expect(getAdjacentPosition(center, 'N')).toEqual({ x: 2, y: 1 });
+    expect(getAdjacentPosition(center, 'up')).toEqual({ x: 2, y: 1 });
   });
 
   it('moves South (y+1)', () => {
-    expect(getAdjacentPosition(center, 'S')).toEqual({ x: 2, y: 3 });
+    expect(getAdjacentPosition(center, 'down')).toEqual({ x: 2, y: 3 });
   });
 
   it('moves East (x+1)', () => {
-    expect(getAdjacentPosition(center, 'E')).toEqual({ x: 3, y: 2 });
+    expect(getAdjacentPosition(center, 'right')).toEqual({ x: 3, y: 2 });
   });
 
   it('moves West (x-1)', () => {
-    expect(getAdjacentPosition(center, 'W')).toEqual({ x: 1, y: 2 });
+    expect(getAdjacentPosition(center, 'left')).toEqual({ x: 1, y: 2 });
   });
 });
 
@@ -95,19 +95,19 @@ describe('isAdjacent', () => {
 
 describe('getDirectionBetween', () => {
   it('returns N when target is above', () => {
-    expect(getDirectionBetween({ x: 2, y: 2 }, { x: 2, y: 1 })).toBe('N');
+    expect(getDirectionBetween({ x: 2, y: 2 }, { x: 2, y: 1 })).toBe('up');
   });
 
   it('returns S when target is below', () => {
-    expect(getDirectionBetween({ x: 2, y: 2 }, { x: 2, y: 3 })).toBe('S');
+    expect(getDirectionBetween({ x: 2, y: 2 }, { x: 2, y: 3 })).toBe('down');
   });
 
   it('returns E when target is right', () => {
-    expect(getDirectionBetween({ x: 2, y: 2 }, { x: 3, y: 2 })).toBe('E');
+    expect(getDirectionBetween({ x: 2, y: 2 }, { x: 3, y: 2 })).toBe('right');
   });
 
   it('returns W when target is left', () => {
-    expect(getDirectionBetween({ x: 2, y: 2 }, { x: 1, y: 2 })).toBe('W');
+    expect(getDirectionBetween({ x: 2, y: 2 }, { x: 1, y: 2 })).toBe('left');
   });
 
   it('returns null for non-adjacent positions', () => {
@@ -155,7 +155,7 @@ describe('getValidMoveDirections', () => {
     ];
     const result = getValidMoveDirections({ x: 1, y: 1 }, 3, 3, agents);
     expect(result).toHaveLength(4);
-    expect(result).toEqual(expect.arrayContaining(['N', 'S', 'E', 'W']));
+    expect(result).toEqual(expect.arrayContaining(['up', 'down', 'right', 'left']));
   });
 
   it('excludes out-of-bounds directions at corner (0,0)', () => {
@@ -164,10 +164,10 @@ describe('getValidMoveDirections', () => {
     ];
     const result = getValidMoveDirections({ x: 0, y: 0 }, 3, 3, agents);
     expect(result).toHaveLength(2);
-    expect(result).toContain('S');
-    expect(result).toContain('E');
-    expect(result).not.toContain('N');
-    expect(result).not.toContain('W');
+    expect(result).toContain('down');
+    expect(result).toContain('right');
+    expect(result).not.toContain('up');
+    expect(result).not.toContain('left');
   });
 
   it('excludes out-of-bounds directions at corner (2,2)', () => {
@@ -176,10 +176,10 @@ describe('getValidMoveDirections', () => {
     ];
     const result = getValidMoveDirections({ x: 2, y: 2 }, 3, 3, agents);
     expect(result).toHaveLength(2);
-    expect(result).toContain('N');
-    expect(result).toContain('W');
-    expect(result).not.toContain('S');
-    expect(result).not.toContain('E');
+    expect(result).toContain('up');
+    expect(result).toContain('left');
+    expect(result).not.toContain('down');
+    expect(result).not.toContain('right');
   });
 
   it('excludes directions with occupied cells', () => {
@@ -190,10 +190,10 @@ describe('getValidMoveDirections', () => {
     ];
     const result = getValidMoveDirections({ x: 1, y: 1 }, 3, 3, agents);
     expect(result).toHaveLength(2);
-    expect(result).toContain('S');
-    expect(result).toContain('W');
-    expect(result).not.toContain('N');
-    expect(result).not.toContain('E');
+    expect(result).toContain('down');
+    expect(result).toContain('left');
+    expect(result).not.toContain('up');
+    expect(result).not.toContain('right');
   });
 
   it('ignores eliminated agents when checking occupancy', () => {
@@ -203,7 +203,7 @@ describe('getValidMoveDirections', () => {
     ];
     const result = getValidMoveDirections({ x: 1, y: 1 }, 3, 3, agents);
     expect(result).toHaveLength(4);
-    expect(result).toContain('N');
+    expect(result).toContain('up');
   });
 
   it('returns empty array on 1x1 grid', () => {

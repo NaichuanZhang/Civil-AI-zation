@@ -36,15 +36,15 @@ describe('processRound', () => {
     const config = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 25, position: { x: 0, y: 2 }, orientation: 'N' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 20, position: { x: 2, y: 1 }, orientation: 'W' as const },
-        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 15, position: { x: 1, y: 0 }, orientation: 'S' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 25, position: { x: 0, y: 2 }, orientation: 'up' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 20, position: { x: 2, y: 1 }, orientation: 'left' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 15, position: { x: 1, y: 0 }, orientation: 'down' as const },
       ],
     };
 
     const decider: ActionDecider = (agentId) => {
-      if (agentId === 'haiku') return { type: 'move', direction: 'S' };
-      if (agentId === 'sonnet') return { type: 'move', direction: 'W' };
+      if (agentId === 'haiku') return { type: 'move', direction: 'down' };
+      if (agentId === 'sonnet') return { type: 'move', direction: 'left' };
       return { type: 'rest' };
     };
 
@@ -68,9 +68,9 @@ describe('processRound', () => {
     const config = {
       ...DEFAULT_GAME_CONFIG,
       agents: [
-        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 25, position: { x: 0, y: 2 }, orientation: 'N' as const },
-        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 20, position: { x: 1, y: 1 }, orientation: 'N' as const },
-        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 15, position: { x: 1, y: 0 }, orientation: 'S' as const },
+        { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 25, position: { x: 0, y: 2 }, orientation: 'up' as const },
+        { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 20, position: { x: 1, y: 1 }, orientation: 'up' as const },
+        { agentId: 'haiku' as const, modelId: 'test', speed: 4, hp: 15, position: { x: 1, y: 0 }, orientation: 'down' as const },
       ],
     };
 

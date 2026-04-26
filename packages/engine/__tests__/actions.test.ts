@@ -16,7 +16,7 @@ const makeAgent = (
   speed: 3,
   hp: 20,
   ep: 1,
-  orientation: 'N',
+  orientation: 'up',
   status: 'alive',
   eliminatedAtRound: null,
   memory: [],
@@ -34,26 +34,26 @@ describe('validateMove', () => {
   ];
 
   it('accepts valid move to empty cell', () => {
-    const result = validateMove(agents[0]!, 'E', agents, config);
+    const result = validateMove(agents[0]!, 'right', agents, config);
     expect(result.valid).toBe(true);
   });
 
   it('rejects move off grid', () => {
     const edgeAgent = makeAgent({ agentId: 'opus', position: { x: 0, y: 0 } });
-    const result = validateMove(edgeAgent, 'N', agents, config);
+    const result = validateMove(edgeAgent, 'up', agents, config);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('out of bounds');
   });
 
   it('rejects move to occupied cell', () => {
-    const result = validateMove(agents[0]!, 'N', agents, config);
+    const result = validateMove(agents[0]!, 'up', agents, config);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('occupied');
   });
 
   it('rejects move when no EP', () => {
     const noEpAgent = makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, ep: 0 });
-    const result = validateMove(noEpAgent, 'E', [noEpAgent, agents[1]!, agents[2]!], config);
+    const result = validateMove(noEpAgent, 'right', [noEpAgent, agents[1]!, agents[2]!], config);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('EP');
   });
@@ -64,7 +64,7 @@ describe('validateMove', () => {
       position: { x: 1, y: 1 },
       status: 'eliminated',
     });
-    const result = validateMove(deadAgent, 'E', agents, config);
+    const result = validateMove(deadAgent, 'right', agents, config);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('eliminated');
   });
@@ -73,7 +73,7 @@ describe('validateMove', () => {
 describe('validateAttack', () => {
   it('accepts attack on target in facing direction', () => {
     const agents: AgentState[] = [
-      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'N' }),
+      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'up' }),
       makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 0 } }),
     ];
@@ -83,7 +83,7 @@ describe('validateAttack', () => {
 
   it('rejects attack on adjacent target not in facing direction', () => {
     const agents: AgentState[] = [
-      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'E' }),
+      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'right' }),
       makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 0 } }),
     ];
@@ -94,7 +94,7 @@ describe('validateAttack', () => {
 
   it('rejects attack on non-adjacent target', () => {
     const agents: AgentState[] = [
-      makeAgent({ agentId: 'opus', position: { x: 0, y: 0 }, orientation: 'S' }),
+      makeAgent({ agentId: 'opus', position: { x: 0, y: 0 }, orientation: 'down' }),
       makeAgent({ agentId: 'sonnet', position: { x: 2, y: 2 } }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 2 } }),
     ];
@@ -105,7 +105,7 @@ describe('validateAttack', () => {
 
   it('rejects attack on eliminated target', () => {
     const agents: AgentState[] = [
-      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'N' }),
+      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'up' }),
       makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 }, status: 'eliminated' }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 0 } }),
     ];
@@ -116,7 +116,7 @@ describe('validateAttack', () => {
 
   it('rejects attack on self', () => {
     const agents: AgentState[] = [
-      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'N' }),
+      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'up' }),
       makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 0 } }),
     ];
@@ -127,7 +127,7 @@ describe('validateAttack', () => {
 
   it('rejects attack when no EP', () => {
     const agents: AgentState[] = [
-      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'N', ep: 0 }),
+      makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'up', ep: 0 }),
       makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 0 } }),
     ];
@@ -180,19 +180,19 @@ describe('executeAction', () => {
   describe('move', () => {
     it('updates position and orientation, deducts EP', () => {
       const agents: AgentState[] = [
-        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'N' }),
+        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'up' }),
         makeAgent({ agentId: 'sonnet', position: { x: 0, y: 0 } }),
         makeAgent({ agentId: 'haiku', position: { x: 2, y: 2 } }),
       ];
       const { agents: newAgents, result } = executeAction(
         'opus',
-        { type: 'move', direction: 'E' },
+        { type: 'move', direction: 'right' },
         agents,
         config,
       );
       const opus = newAgents.find((a) => a.agentId === 'opus')!;
       expect(opus.position).toEqual({ x: 2, y: 1 });
-      expect(opus.orientation).toBe('E');
+      expect(opus.orientation).toBe('right');
       expect(opus.ep).toBe(0);
       expect(result.type).toBe('move');
       if (result.type === 'move') {
@@ -205,8 +205,8 @@ describe('executeAction', () => {
   describe('attack', () => {
     it('deals damage and deducts EP when facing target', () => {
       const agents: AgentState[] = [
-        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'N' }),
-        makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 }, orientation: 'E' }),
+        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'up' }),
+        makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 }, orientation: 'right' }),
         makeAgent({ agentId: 'haiku', position: { x: 2, y: 2 } }),
       ];
       const { agents: newAgents, result } = executeAction(
@@ -231,8 +231,8 @@ describe('executeAction', () => {
 
     it('eliminates target when HP reaches 0', () => {
       const agents: AgentState[] = [
-        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'N' }),
-        makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 }, hp: 5, orientation: 'E' }),
+        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'up' }),
+        makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 }, hp: 5, orientation: 'right' }),
         makeAgent({ agentId: 'haiku', position: { x: 2, y: 2 } }),
       ];
       const { agents: newAgents, result } = executeAction(
@@ -252,8 +252,8 @@ describe('executeAction', () => {
 
     it('does not let HP go negative', () => {
       const agents: AgentState[] = [
-        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'N' }),
-        makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 }, hp: 2, orientation: 'E' }),
+        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'up' }),
+        makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 }, hp: 2, orientation: 'right' }),
         makeAgent({ agentId: 'haiku', position: { x: 2, y: 2 } }),
       ];
       const { agents: newAgents } = executeAction(
@@ -268,7 +268,7 @@ describe('executeAction', () => {
 
     it('rejects attack when not facing target (invalid fallback)', () => {
       const agents: AgentState[] = [
-        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'E' }),
+        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'right' }),
         makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
         makeAgent({ agentId: 'haiku', position: { x: 2, y: 2 } }),
       ];
@@ -285,24 +285,24 @@ describe('executeAction', () => {
   describe('turn', () => {
     it('changes orientation and deducts EP', () => {
       const agents: AgentState[] = [
-        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'N' }),
+        makeAgent({ agentId: 'opus', position: { x: 1, y: 1 }, orientation: 'up' }),
         makeAgent({ agentId: 'sonnet', position: { x: 0, y: 0 } }),
         makeAgent({ agentId: 'haiku', position: { x: 2, y: 2 } }),
       ];
       const { agents: newAgents, result } = executeAction(
         'opus',
-        { type: 'turn', direction: 'S' },
+        { type: 'turn', direction: 'down' },
         agents,
         config,
       );
       const opus = newAgents.find((a) => a.agentId === 'opus')!;
-      expect(opus.orientation).toBe('S');
+      expect(opus.orientation).toBe('down');
       expect(opus.position).toEqual({ x: 1, y: 1 });
       expect(opus.ep).toBe(0);
       expect(result.type).toBe('turn');
       if (result.type === 'turn') {
-        expect(result.previousOrientation).toBe('N');
-        expect(result.newOrientation).toBe('S');
+        expect(result.previousOrientation).toBe('up');
+        expect(result.newOrientation).toBe('down');
       }
     });
   });
@@ -336,7 +336,7 @@ describe('executeAction', () => {
       ];
       const { result } = executeAction(
         'opus',
-        { type: 'move', direction: 'N' },
+        { type: 'move', direction: 'up' },
         agents,
         config,
       );
@@ -348,7 +348,7 @@ describe('executeAction', () => {
 
     it('falls back to rest when attack target is not in facing direction', () => {
       const agents: AgentState[] = [
-        makeAgent({ agentId: 'opus', position: { x: 0, y: 0 }, orientation: 'N' }),
+        makeAgent({ agentId: 'opus', position: { x: 0, y: 0 }, orientation: 'up' }),
         makeAgent({ agentId: 'sonnet', position: { x: 2, y: 2 } }),
         makeAgent({ agentId: 'haiku', position: { x: 1, y: 1 } }),
       ];
