@@ -10,6 +10,12 @@ var HIT_ZONE_MODIFIERS = {
   back: 1.5
   // Attacking from back: 150% damage (backstab bonus)
 };
+var ACTION_COSTS = {
+  move: 1,
+  turn: 1,
+  attack: 1,
+  rest: 0
+};
 var BACKEND_CONFIG = {
   summaryModel: "openai/gpt-4o-mini",
   // Model for round summaries
@@ -81,7 +87,8 @@ var DEFAULT_GAME_CONFIG = {
     position: config.startPosition,
     orientation: config.startOrientation
   })),
-  chests: CHEST_CONFIG
+  chests: CHEST_CONFIG,
+  actionCosts: ACTION_COSTS
 };
 
 // packages/engine/src/grid.ts
@@ -318,7 +325,7 @@ function validateMove(agent, direction, allAgents, config) {
   if (agent.status === "eliminated") {
     return { valid: false, reason: "Agent is eliminated" };
   }
-  if (agent.ep < 1) {
+  if (agent.ep < config.actionCosts.move) {
     return { valid: false, reason: "Not enough EP" };
   }
   const dest = getAdjacentPosition(agent.position, direction);
@@ -330,11 +337,11 @@ function validateMove(agent, direction, allAgents, config) {
   }
   return { valid: true };
 }
-function validateAttack(agent, targetId, allAgents) {
+function validateAttack(agent, targetId, allAgents, config) {
   if (agent.status === "eliminated") {
     return { valid: false, reason: "Agent is eliminated" };
   }
-  if (agent.ep < 1) {
+  if (agent.ep < config.actionCosts.attack) {
     return { valid: false, reason: "Not enough EP" };
   }
   if (targetId === agent.agentId) {
@@ -353,11 +360,11 @@ function validateAttack(agent, targetId, allAgents) {
   }
   return { valid: true };
 }
-function validateTurn(agent) {
+function validateTurn(agent, config) {
   if (agent.status === "eliminated") {
     return { valid: false, reason: "Agent is eliminated" };
   }
-  if (agent.ep < 1) {
+  if (agent.ep < config.actionCosts.turn) {
     return { valid: false, reason: "Not enough EP" };
   }
   return { valid: true };
@@ -374,7 +381,7 @@ function executeAction(agentId, action, agents, config, chests) {
       let newAgents = updateAgent(agents, agentId, {
         position: dest,
         orientation: action.direction,
-        ep: agent.ep - 1
+        ep: agent.ep - config.actionCosts.move
       });
       const chest = findChestAtPosition(chests, dest);
       let newChests = chests;
@@ -403,7 +410,7 @@ function executeAction(agentId, action, agents, config, chests) {
       };
     }
     case "attack": {
-      const validation = validateAttack(agent, action.target, agents);
+      const validation = validateAttack(agent, action.target, agents, config);
       if (!validation.valid) {
         return makeInvalidResult(agents, chests, validation.reason, config);
       }
@@ -416,7 +423,7 @@ function executeAction(agentId, action, agents, config, chests) {
       );
       const newHp = Math.max(0, target.hp - damage);
       const eliminated = newHp <= 0;
-      let newAgents = updateAgent(agents, agentId, { ep: agent.ep - 1 });
+      let newAgents = updateAgent(agents, agentId, { ep: agent.ep - config.actionCosts.attack });
       newAgents = updateAgent(newAgents, action.target, {
         hp: newHp,
         ...eliminated ? { status: "eliminated", eliminatedAtRound: 0 } : {}
@@ -436,14 +443,14 @@ function executeAction(agentId, action, agents, config, chests) {
       };
     }
     case "turn": {
-      const validation = validateTurn(agent);
+      const validation = validateTurn(agent, config);
       if (!validation.valid) {
         return makeInvalidResult(agents, chests, validation.reason, config);
       }
       const prev = agent.orientation;
       const newAgents = updateAgent(agents, agentId, {
         orientation: action.direction,
-        ep: agent.ep - 1
+        ep: agent.ep - config.actionCosts.turn
       });
       return {
         agents: newAgents,
