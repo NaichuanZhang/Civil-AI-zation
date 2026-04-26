@@ -145,32 +145,32 @@ export function useGameState() {
           const hp = finalAgentState?.hp ?? 0;
           const ep = finalAgentState?.ep ?? 0;
 
-          // Log reasoning/rationale
+          // Log reasoning/rationale with round number
           if (reasoning) {
             console.log('[turn_completed] Adding reasoning log');
             addLogRef.current(
               agentId as 'opus' | 'sonnet' | 'haiku',
               'prompt',
-              `Reasoning: ${reasoning}`,
-              { reasoning, action }
+              `[R${s.round}] REASONING: ${reasoning}`,
+              { round: s.round, reasoning, action }
             );
           }
 
-          // Log the action taken
+          // Log the action taken with round number
           console.log('[turn_completed] Adding action log');
           addLogRef.current(
             agentId as 'opus' | 'sonnet' | 'haiku',
             'action',
-            `Action: ${action?.type || 'unknown'}${action?.direction ? ' ' + action.direction : ''}${action?.target ? ' → ' + action.target : ''}`,
-            { action, result }
+            `[R${s.round}] ACTION: ${action?.type || 'unknown'}${action?.direction ? ' ' + action.direction : ''}${action?.target ? ' → ' + action.target : ''}`,
+            { round: s.round, action, result }
           );
 
-          // Log the result with final position
+          // Log the result with final position and round number
           if (result) {
             console.log('[turn_completed] Adding result log');
 
             // Build detailed result message including final state
-            let resultMsg = `Result: ${result.type}`;
+            let resultMsg = `[R${s.round}] RESULT: ${result.type}`;
             if (result.type === 'move' && result.to) {
               resultMsg += ` → New Pos: (${result.to.x}, ${result.to.y}) | Face: ${orientation ?? '?'}`;
             }
@@ -186,7 +186,7 @@ export function useGameState() {
               agentId as 'opus' | 'sonnet' | 'haiku',
               'result',
               resultMsg,
-              { result, finalPosition: pos, finalHp: hp, finalEp: ep }
+              { round: s.round, result, finalPosition: pos, finalHp: hp, finalEp: ep }
             );
           }
 
