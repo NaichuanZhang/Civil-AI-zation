@@ -1,11 +1,15 @@
+import { Pause, Play } from 'lucide-react';
+
 interface GameControlsProps {
   status: string;
   round: number;
   result: { winner: string | null; type: string } | null;
+  isPaused: boolean;
   onStartGame: () => void;
+  onTogglePause: () => void;
 }
 
-export function GameControls({ status, round, result, onStartGame }: GameControlsProps) {
+export function GameControls({ status, round, result, isPaused, onStartGame, onTogglePause }: GameControlsProps) {
   const isCompleted = status === 'completed';
   const isDisabled = status === 'loading' || status === 'running';
 
@@ -59,9 +63,47 @@ export function GameControls({ status, round, result, onStartGame }: GameControl
       </button>
 
       {status === 'running' && (
-        <span style={{ color: '#94a3b8', fontSize: 14 }}>
-          Round {round} / 30
-        </span>
+        <>
+          <button
+            onClick={onTogglePause}
+            style={{
+              padding: '8px 16px',
+              fontSize: 14,
+              fontWeight: 'bold',
+              border: '1px solid #334155',
+              borderRadius: 6,
+              cursor: 'pointer',
+              backgroundColor: isPaused ? '#eab308' : '#334155',
+              color: '#fff',
+              transition: 'background-color 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = isPaused ? '#ca8a04' : '#475569';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = isPaused ? '#eab308' : '#334155';
+            }}
+          >
+            {isPaused ? (
+              <>
+                <Play size={16} />
+                Resume
+              </>
+            ) : (
+              <>
+                <Pause size={16} />
+                Pause
+              </>
+            )}
+          </button>
+          <span style={{ color: '#94a3b8', fontSize: 14 }}>
+            Round {round} / 30
+            {isPaused && <span style={{ color: '#eab308', marginLeft: 8 }}>⏸ PAUSED</span>}
+          </span>
+        </>
       )}
 
       {status === 'completed' && result && (

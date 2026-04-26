@@ -13,6 +13,13 @@ const AGENT_IDS = Object.keys(AGENT_STATS) as Array<keyof typeof AGENT_STATS>;
 export function App() {
   const { state, startGame } = useGameState();
   const [debugMode, setDebugMode] = usePersistedState('civil-ai-zation:debugMode', false);
+  const [isPaused, setIsPaused] = usePersistedState('civil-ai-zation:isPaused', false);
+
+  const handleTogglePause = () => {
+    setIsPaused(!isPaused);
+    // TODO: Implement actual pause logic in backend
+    console.log(isPaused ? 'Resuming game...' : 'Pausing game...');
+  };
 
   return (
     <div
@@ -40,7 +47,9 @@ export function App() {
         status={state.status}
         round={state.round}
         result={state.result}
+        isPaused={isPaused}
         onStartGame={startGame}
+        onTogglePause={handleTogglePause}
       />
 
       <div style={{ display: 'flex', gap: UI_CONFIG.gridGap, marginTop: 16 }}>
