@@ -81,7 +81,7 @@ export function App() {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <LogViewer systemLogs={state.eventLog} />
+        <LogViewer systemLogs={state.eventLog} debugMode={debugMode} />
       </div>
     </div>
   );

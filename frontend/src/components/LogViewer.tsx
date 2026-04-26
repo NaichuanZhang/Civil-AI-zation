@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bug, Circle, Play, Pause, SkipForward } from 'lucide-react';
 import { useLog } from '../contexts/LogContext';
 
@@ -6,20 +6,30 @@ type LogType = 'system' | 'opus' | 'sonnet' | 'haiku';
 
 interface LogViewerProps {
   systemLogs: Array<{ type: string; round: number; text?: string; agentId?: string; action?: unknown; result?: unknown }>;
+  debugMode: boolean;
 }
 
-export function LogViewer({ systemLogs }: LogViewerProps) {
+export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
   const { logs: recordedLogs, recordMode, enabledAgents, setRecordMode, toggleAgent, clearLogs } = useLog();
   const [activeTab, setActiveTab] = useState<LogType>('system');
   const [replayMode, setReplayMode] = useState(false);
   const [replayStep, setReplayStep] = useState(0);
 
-  const tabs: Array<{ id: LogType; label: string }> = [
-    { id: 'system', label: 'System' },
-    { id: 'opus', label: 'Opus' },
-    { id: 'sonnet', label: 'Sonnet' },
-    { id: 'haiku', label: 'Haiku' },
-  ];
+  // Reset to system tab when debug mode is turned off
+  useEffect(() => {
+    if (!debugMode && activeTab !== 'system') {
+      setActiveTab('system');
+    }
+  }, [debugMode, activeTab]);
+
+  const tabs: Array<{ id: LogType; label: string }> = debugMode
+    ? [
+        { id: 'system', label: 'System' },
+        { id: 'opus', label: 'Opus' },
+        { id: 'sonnet', label: 'Sonnet' },
+        { id: 'haiku', label: 'Haiku' },
+      ]
+    : [{ id: 'system', label: 'System' }];
 
   const startRecording = () => {
     clearLogs();
