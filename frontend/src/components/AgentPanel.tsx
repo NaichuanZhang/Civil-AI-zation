@@ -12,13 +12,31 @@ const AGENT_MODELS: Record<string, string> = {
   haiku: 'GPT-4o Mini',
 };
 
+function formatAction(action: { type: string; direction?: string; target?: string }): string {
+  switch (action.type) {
+    case 'move':
+      return `Move ${action.direction || '?'}`;
+    case 'attack':
+      return `Attack ${action.target || '?'}`;
+    case 'turn':
+      return `Turn ${action.direction || '?'}`;
+    case 'rest':
+      return 'Rest';
+    case 'invalid':
+      return 'Invalid';
+    default:
+      return action.type;
+  }
+}
+
 interface AgentPanelProps {
   agent: AgentUIState;
   isCurrentTurn: boolean;
   maxHp: number;
+  debugMode?: boolean;
 }
 
-export function AgentPanel({ agent, isCurrentTurn, maxHp }: AgentPanelProps) {
+export function AgentPanel({ agent, isCurrentTurn, maxHp, debugMode = false }: AgentPanelProps) {
   const hpPercent = maxHp > 0 ? (agent.hp / maxHp) * 100 : 0;
   const hpColor = hpPercent > 50 ? '#22c55e' : hpPercent > 25 ? '#eab308' : '#ef4444';
   const eliminated = agent.status === 'eliminated';
@@ -77,6 +95,30 @@ export function AgentPanel({ agent, isCurrentTurn, maxHp }: AgentPanelProps) {
         <span>Pos: ({agent.position.x},{agent.position.y})</span>
         <span>Facing: {agent.orientation}</span>
       </div>
+
+      {debugMode && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: 8,
+            backgroundColor: '#0f172a',
+            borderRadius: 4,
+            border: '1px solid #334155',
+          }}
+        >
+          <div style={{ fontSize: 10, color: '#fbbf24', fontWeight: 'bold', marginBottom: 4 }}>
+            DEBUG INFO
+          </div>
+          <div style={{ fontSize: 11, color: '#94a3b8' }}>
+            Energy: {agent.ep !== undefined ? agent.ep : 'N/A'}
+          </div>
+          {agent.lastAction && (
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+              Last Action: {formatAction(agent.lastAction)}
+            </div>
+          )}
+        </div>
+      )}
 
       {eliminated && agent.eliminatedAtRound != null && (
         <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4, fontWeight: 'bold' }}>

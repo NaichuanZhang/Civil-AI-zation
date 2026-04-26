@@ -17,7 +17,7 @@ import {
   buildMemoryEntry,
   buildSummaryPrompt,
   getValidMoveDirections,
-} from './engine.ts';
+} from './engine/index.js';
 import type {
   AgentState,
   AgentId,
@@ -26,7 +26,7 @@ import type {
   GameState,
   GameConfig,
   TurnRecord,
-} from './engine.ts';
+} from './engine/index.js';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',

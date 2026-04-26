@@ -1,7 +1,7 @@
 // insforge/functions/run-game/index.src.ts
 import { createClient } from "npm:@insforge/sdk";
 
-// insforge/functions/run-game/engine.ts
+// packages/engine/src/config.ts
 var DEFAULT_GAME_CONFIG = {
   mapWidth: 3,
   mapHeight: 3,
@@ -37,6 +37,8 @@ var DEFAULT_GAME_CONFIG = {
     }
   ]
 };
+
+// packages/engine/src/grid.ts
 var DIRECTION_DELTAS = {
   N: { x: 0, y: -1 },
   S: { x: 0, y: 1 },
@@ -64,6 +66,15 @@ function isPositionOccupied(pos, agents) {
     (a) => a.status === "alive" && a.position.x === pos.x && a.position.y === pos.y
   );
 }
+var ALL_DIRECTIONS = ["N", "S", "E", "W"];
+function getValidMoveDirections(pos, width, height, agents) {
+  return ALL_DIRECTIONS.filter((dir) => {
+    const dest = getAdjacentPosition(pos, dir);
+    return isInBounds(dest, width, height) && !isPositionOccupied(dest, agents);
+  });
+}
+
+// packages/engine/src/orientation.ts
 var OPPOSITES = {
   N: "S",
   S: "N",
@@ -86,6 +97,8 @@ function getHitZone(attackDirection, targetFacing) {
 function getDamageModifier(hitZone) {
   return MODIFIERS[hitZone];
 }
+
+// packages/engine/src/combat.ts
 function calculateDamage(attackerPos, targetPos, targetFacing, baseDamage) {
   const attackDirection = getDirectionBetween(attackerPos, targetPos);
   if (attackDirection === null) {
@@ -98,6 +111,8 @@ function calculateDamage(attackerPos, targetPos, targetFacing, baseDamage) {
   const damage = Math.floor(baseDamage * modifier);
   return { damage, hitZone, modifier };
 }
+
+// packages/engine/src/state.ts
 function createInitialState(config) {
   const turnOrders = shuffleTiebreakers(config.agents.length);
   const agents = config.agents.map((ac, i) => ({
@@ -169,6 +184,8 @@ function shuffleTiebreakers(count) {
   }
   return arr;
 }
+
+// packages/engine/src/memory.ts
 function appendMemory(currentMemory, entry, cap) {
   const updated = [...currentMemory, entry];
   if (updated.length <= cap) return updated;
@@ -199,6 +216,8 @@ function buildMemoryEntry(round, _agentId, result, _agents) {
       return `Round ${round}: Invalid action (${result.reason}). Rested instead. +${result.fallbackAction.epBonusNextTurn} EP next turn.`;
   }
 }
+
+// packages/engine/src/actions.ts
 function validateMove(agent, direction, allAgents, config) {
   if (agent.status === "eliminated") {
     return { valid: false, reason: "Agent is eliminated" };
@@ -343,6 +362,8 @@ function makeInvalidResult(agents, reason, config) {
     }
   };
 }
+
+// packages/engine/src/turn.ts
 function getTurnOrder(agents) {
   return agents.filter((a) => a.status === "alive").toSorted((a, b) => {
     if (b.speed !== a.speed) return b.speed - a.speed;
@@ -353,6 +374,8 @@ function resetEpForTurn(agent, config, restedLastTurn) {
   const ep = restedLastTurn ? config.energyPoints + config.restEpBonus : config.energyPoints;
   return { ...agent, ep };
 }
+
+// packages/engine/src/win-condition.ts
 function checkWinCondition(state) {
   const alive = state.agents.filter((a) => a.status === "alive");
   if (alive.length === 1) {
@@ -391,6 +414,8 @@ function checkWinCondition(state) {
     winnerAgentId: null
   };
 }
+
+// packages/engine/src/agent-prompt.ts
 var AGENT_PERSONALITIES = {
   opus: "You are Opus, a strategic and patient warrior. You think several moves ahead, value positioning, and prefer to attack from advantageous angles.",
   sonnet: "You are Sonnet, a balanced and adaptive fighter. You assess the situation pragmatically, adapting your strategy to the current board state.",
@@ -427,7 +452,7 @@ ${AGENT_PERSONALITIES[agentId]}
 
 Choose ONE action. Think about positioning, opponent orientation, and survival.`;
 }
-function buildUserMessage(sharedView, personalView, aliveAgents) {
+function buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections) {
   const grid = buildGridVisual(aliveAgents, sharedView.mapWidth, sharedView.mapHeight);
   const agentLines = sharedView.agents.map((a) => {
     const youTag = a.agentId === personalView.agentId ? " [YOU]" : "";
@@ -451,6 +476,7 @@ ${eliminatedLines}
 YOUR STATUS:
 - HP: ${personalView.hp}, EP: ${personalView.ep}, Position: (${personalView.position.x},${personalView.position.y}), Facing: ${DIRECTION_NAMES2[personalView.orientation]}
 - Adjacent cells: ${adjacentInfo}
+- Valid moves: ${validMoveDirections.length > 0 ? validMoveDirections.map((d) => `${d} (${DIRECTION_NAMES2[d]})`).join(", ") : "None \u2014 you are boxed in"}
 - ${buildAttackTargetInfo(personalView, aliveAgents, sharedView.mapWidth, sharedView.mapHeight)}
 
 YOUR MEMORY:
@@ -461,31 +487,54 @@ ${summaryText}
 
 Choose your action.`;
 }
-function buildToolDefinitions(aliveOpponents) {
-  const tools = [
-    {
+function buildToolDefinitions(aliveOpponents, validMoveDirections) {
+  const tools = [];
+  if (validMoveDirections.length > 0) {
+    tools.push({
       type: "function",
       function: {
         name: "move",
-        description: "Move 1 cell in a cardinal direction. Sets your facing to that direction.",
+        description: "Move 1 cell in a cardinal direction. Costs 1 EP. Sets your facing to that direction. Cannot move outside map bounds or onto a cell occupied by another agent. Only the listed directions are valid this turn.",
         parameters: {
           type: "object",
           properties: {
             direction: {
               type: "string",
-              enum: ["N", "S", "E", "W"],
+              enum: [...validMoveDirections],
               description: "Direction to move"
             }
           },
           required: ["direction"]
         }
       }
-    },
+    });
+  }
+  if (aliveOpponents.length > 0) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "attack",
+        description: "Attack an adjacent agent in your facing direction. Costs 1 EP. The target must be directly in the cell you are facing \u2014 you cannot attack diagonally, at range, or behind you. Use turn(direction) to change facing first if needed. Damage depends on how you hit relative to the target's facing: front=2, side=5, back=7.",
+        parameters: {
+          type: "object",
+          properties: {
+            target: {
+              type: "string",
+              enum: [...aliveOpponents],
+              description: "ID of the agent to attack"
+            }
+          },
+          required: ["target"]
+        }
+      }
+    });
+  }
+  tools.push(
     {
       type: "function",
       function: {
         name: "turn",
-        description: "Change your facing direction without moving. Costs 1 EP. Use this to face a target before attacking.",
+        description: "Change your facing direction without moving. Costs 1 EP. Does not change your position. Use this to face a target before attacking, or to reorient defensively.",
         parameters: {
           type: "object",
           properties: {
@@ -503,7 +552,7 @@ function buildToolDefinitions(aliveOpponents) {
       type: "function",
       function: {
         name: "rest",
-        description: "Rest this turn. Gain +1 EP next turn.",
+        description: "Skip your action this turn. Costs 0 EP. You will gain +1 bonus EP next turn (giving you 2 EP total).",
         parameters: {
           type: "object",
           properties: {},
@@ -511,27 +560,7 @@ function buildToolDefinitions(aliveOpponents) {
         }
       }
     }
-  ];
-  if (aliveOpponents.length > 0) {
-    tools.splice(1, 0, {
-      type: "function",
-      function: {
-        name: "attack",
-        description: "Attack the agent directly in front of you (in your facing direction). You must be facing the target.",
-        parameters: {
-          type: "object",
-          properties: {
-            target: {
-              type: "string",
-              enum: [...aliveOpponents],
-              description: "ID of the agent to attack"
-            }
-          },
-          required: ["target"]
-        }
-      }
-    });
-  }
+  );
   return tools;
 }
 function parseToolCall(toolCall) {
@@ -640,6 +669,8 @@ function buildAttackTargetInfo(personal, aliveAgents, width, height) {
   }
   return `ATTACK TARGET: Cell (${fx},${fy}) in front of you is empty. No one to attack. Use turn(direction) to change facing, or move closer.`;
 }
+
+// packages/engine/src/summary.ts
 var DIRECTION_NAMES3 = {
   N: "North",
   S: "South",
@@ -802,14 +833,22 @@ async function runGameLoop(client, gameId, initialState, config) {
       state = { ...state, agents: updateAgent(state.agents, turnAgent.agentId, { ep: withEp.ep }) };
       const sharedView = buildSharedView(state);
       const personalView = buildPersonalView(state, turnAgent.agentId);
-      const aliveOpponents = state.agents.filter((a) => a.status === "alive" && a.agentId !== turnAgent.agentId).map((a) => a.agentId);
+      const aliveAgents = state.agents.filter((a) => a.status === "alive");
+      const aliveOpponents = aliveAgents.filter((a) => a.agentId !== turnAgent.agentId).map((a) => a.agentId);
+      const currentAgentState = state.agents.find((a) => a.agentId === turnAgent.agentId);
+      const validMoveDirections = getValidMoveDirections(
+        currentAgentState.position,
+        config.mapWidth,
+        config.mapHeight,
+        aliveAgents
+      );
       let action;
       let rawResponse = null;
       let reasoning = "";
       try {
         const systemPrompt = buildSystemPrompt(turnAgent.agentId);
-        const userMessage = buildUserMessage(sharedView, personalView, state.agents.filter((a) => a.status === "alive"));
-        const tools = buildToolDefinitions(aliveOpponents);
+        const userMessage = buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections);
+        const tools = buildToolDefinitions(aliveOpponents, validMoveDirections);
         const t0 = Date.now();
         const completion = await client.ai.chat.completions.create({
           model: turnAgent.modelId,

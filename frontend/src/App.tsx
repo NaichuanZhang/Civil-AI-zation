@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useGameState } from './hooks/useGameState';
 import { Grid } from './components/Grid';
 import { AgentPanel } from './components/AgentPanel';
 import { EventLog } from './components/EventLog';
 import { GameControls } from './components/GameControls';
+import { Settings } from './components/Settings';
 
 const INITIAL_HP: Record<string, number> = {
   opus: 25,
@@ -12,6 +14,7 @@ const INITIAL_HP: Record<string, number> = {
 
 export function App() {
   const { state, startGame } = useGameState();
+  const [debugMode, setDebugMode] = useState(false);
 
   return (
     <div
@@ -25,9 +28,12 @@ export function App() {
         color: '#e2e8f0',
       }}
     >
-      <h1 style={{ fontSize: 28, fontWeight: 'bold', margin: '0 0 4px 0', color: '#f1f5f9' }}>
-        Civil-AI-zation
-      </h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: '#f1f5f9' }}>
+          Civil-AI-zation
+        </h1>
+        <Settings debugMode={debugMode} onDebugModeChange={setDebugMode} />
+      </div>
       <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 16px 0' }}>
         Turn-based AI arena battle
       </p>
@@ -51,6 +57,7 @@ export function App() {
                   agent={agent}
                   isCurrentTurn={agent.agentId === state.currentTurnAgent}
                   maxHp={INITIAL_HP[agent.agentId] ?? 20}
+                  debugMode={debugMode}
                 />
               ))
             : ['opus', 'sonnet', 'haiku'].map((id) => (
@@ -67,6 +74,7 @@ export function App() {
                   }}
                   isCurrentTurn={false}
                   maxHp={INITIAL_HP[id] ?? 20}
+                  debugMode={debugMode}
                 />
               ))}
         </div>

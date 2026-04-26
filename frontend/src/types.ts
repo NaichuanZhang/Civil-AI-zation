@@ -2,10 +2,12 @@ export interface AgentUIState {
   agentId: string;
   position: { x: number; y: number };
   hp: number;
+  ep?: number;
   orientation: string;
   status: string;
   speed: number;
   eliminatedAtRound: number | null;
+  lastAction?: { type: string; direction?: string; target?: string };
 }
 
 export interface EventLogEntry {
