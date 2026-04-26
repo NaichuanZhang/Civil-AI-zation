@@ -468,12 +468,14 @@ Example: You are at (2,1), opponent at (0,1)
 - To reach: move left to (1,1), then move left again to (0,1)
 
 === ACTIONS (each costs 1 EP) ===
-1. move(direction): Move 1 cell AND automatically face that direction
-   - up: decreases Y by 1, face up. Example: (1,2) \u2192 (1,1)
-   - down: increases Y by 1, face down. Example: (1,0) \u2192 (1,1)
-   - left: decreases X by 1, face left. Example: (2,1) \u2192 (1,1)
-   - right: increases X by 1, face right. Example: (0,1) \u2192 (1,1)
+1. move(direction): Move 1 cell in the specified direction AND automatically face that direction
+   - up: YOUR position (X, Y-1), face up. If at (0,1) \u2192 move to (0,0)
+   - down: YOUR position (X, Y+1), face down. If at (0,1) \u2192 move to (0,2)
+   - left: YOUR position (X-1, Y), face left. If at (1,1) \u2192 move to (0,1)
+   - right: YOUR position (X+1, Y), face right. If at (0,1) \u2192 move to (1,1)
    - Cost: 1 EP (moving also turns you for FREE!)
+   - IMPORTANT: You move YOUR position, not to another agent's position!
+   - To reach an agent, check SURROUNDING to see which direction they are, then move that direction
 
 2. turn(direction): Change facing WITHOUT moving
    - Use when you want to face a different direction but stay in place
@@ -503,11 +505,24 @@ This tells you EXACTLY what is in each adjacent cell:
 
 Example 1: You are at (1,0), surrounding is { up: "Wall", down: "haiku", left: "Empty", right: "Empty" }
 - "haiku" is DOWN from you = haiku is at position (1,1)
-- To attack haiku: You must face down, then attack(haiku)
+- haiku is occupying cell (1,1) so you CANNOT move down (cell is occupied)
+- To attack haiku: turn(down) to face down, then attack(haiku)
 
-Example 2: You are at (2,1), surrounding is { up: "Empty", down: "Empty", left: "Empty", right: "Wall" }
-- All adjacent cells are empty or walls
-- No one to attack until you move closer
+Example 2: You are at (0,1), surrounding is { up: "Empty", down: "Empty", left: "Wall", right: "haiku" }
+- "haiku" is RIGHT from you = haiku is at position (1,1)
+- haiku occupies (1,1), so you CANNOT move right
+- To attack: turn(right) to face right, then attack(haiku)
+- Or if you need to reposition: move(up) to (0,0) or move(down) to (0,2)
+
+Example 3: You are at (0,1), surrounding is { up: "Empty", down: "Empty", left: "Wall", right: "Empty" }
+- Right cell (1,1) is empty, you CAN move right
+- move(right) will take you from (0,1) \u2192 (1,1)
+- After moving, you'll be at (1,1) facing right
+
+CRITICAL:
+- move(direction) moves YOU, not to an agent's position!
+- If surrounding shows an agent, that cell is OCCUPIED - you cannot move there
+- Use SURROUNDING to choose: attack (if facing them) or move to empty cell
 
 USE THIS FIELD to understand who is where relative to you! Do NOT try to calculate from coordinates!
 
