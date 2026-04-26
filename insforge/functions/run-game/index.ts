@@ -1,7 +1,51 @@
 // insforge/functions/run-game/index.src.ts
 import { createClient } from "npm:@insforge/sdk";
 
-// packages/engine/src/config.ts
+// packages/engine/src/game-config.ts
+var HIT_ZONE_MODIFIERS = {
+  front: 0.5,
+  // Attacking from front: 50% damage (target is facing you)
+  side: 1,
+  // Attacking from side: 100% damage (flanking)
+  back: 1.5
+  // Attacking from back: 150% damage (backstab bonus)
+};
+var BACKEND_CONFIG = {
+  summaryModel: "openai/gpt-4o-mini",
+  // Model for round summaries
+  turnDelayMs: 1500,
+  // Delay between turns (for UI readability)
+  gameLoopDelayMs: 2e3
+  // Initial delay before game loop starts
+};
+var AGENT_CONFIG_MAP = {
+  opus: {
+    modelId: "openai/gpt-4o-mini",
+    speed: 2,
+    hp: 25,
+    startPosition: { x: 0, y: 2 },
+    startOrientation: "N"
+  },
+  sonnet: {
+    modelId: "openai/gpt-4o-mini",
+    speed: 3,
+    hp: 20,
+    startPosition: { x: 2, y: 2 },
+    startOrientation: "W"
+  },
+  haiku: {
+    modelId: "openai/gpt-4o-mini",
+    speed: 4,
+    hp: 15,
+    startPosition: { x: 1, y: 0 },
+    startOrientation: "S"
+  }
+};
+var AGENT_INITIAL_HP = {
+  opus: AGENT_CONFIG_MAP.opus.hp,
+  sonnet: AGENT_CONFIG_MAP.sonnet.hp,
+  haiku: AGENT_CONFIG_MAP.haiku.hp
+};
 var DEFAULT_GAME_CONFIG = {
   mapWidth: 3,
   mapHeight: 3,
@@ -13,27 +57,27 @@ var DEFAULT_GAME_CONFIG = {
   agents: [
     {
       agentId: "opus",
-      modelId: "openai/gpt-4o-mini",
-      speed: 2,
-      hp: 25,
-      position: { x: 0, y: 2 },
-      orientation: "N"
+      modelId: AGENT_CONFIG_MAP.opus.modelId,
+      speed: AGENT_CONFIG_MAP.opus.speed,
+      hp: AGENT_CONFIG_MAP.opus.hp,
+      position: AGENT_CONFIG_MAP.opus.startPosition,
+      orientation: AGENT_CONFIG_MAP.opus.startOrientation
     },
     {
       agentId: "sonnet",
-      modelId: "openai/gpt-4o-mini",
-      speed: 3,
-      hp: 20,
-      position: { x: 2, y: 2 },
-      orientation: "W"
+      modelId: AGENT_CONFIG_MAP.sonnet.modelId,
+      speed: AGENT_CONFIG_MAP.sonnet.speed,
+      hp: AGENT_CONFIG_MAP.sonnet.hp,
+      position: AGENT_CONFIG_MAP.sonnet.startPosition,
+      orientation: AGENT_CONFIG_MAP.sonnet.startOrientation
     },
     {
       agentId: "haiku",
-      modelId: "openai/gpt-4o-mini",
-      speed: 4,
-      hp: 15,
-      position: { x: 1, y: 0 },
-      orientation: "S"
+      modelId: AGENT_CONFIG_MAP.haiku.modelId,
+      speed: AGENT_CONFIG_MAP.haiku.speed,
+      hp: AGENT_CONFIG_MAP.haiku.hp,
+      position: AGENT_CONFIG_MAP.haiku.startPosition,
+      orientation: AGENT_CONFIG_MAP.haiku.startOrientation
     }
   ]
 };
@@ -81,11 +125,6 @@ var OPPOSITES = {
   E: "W",
   W: "E"
 };
-var MODIFIERS = {
-  front: 0.5,
-  side: 1,
-  back: 1.5
-};
 function getOppositeDirection(dir) {
   return OPPOSITES[dir];
 }
@@ -95,7 +134,7 @@ function getHitZone(attackDirection, targetFacing) {
   return "side";
 }
 function getDamageModifier(hitZone) {
-  return MODIFIERS[hitZone];
+  return HIT_ZONE_MODIFIERS[hitZone];
 }
 
 // packages/engine/src/combat.ts
@@ -712,8 +751,6 @@ var CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
-var SUMMARY_MODEL = "openai/gpt-4o-mini";
-var TURN_DELAY_MS = 1500;
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -774,7 +811,7 @@ async function runGameLoop(client, gameId, initialState, config) {
   let state = initialState;
   await client.realtime.connect();
   await client.realtime.subscribe(`game:${gameId}`);
-  await delay(2e3);
+  await delay(BACKEND_CONFIG.gameLoopDelayMs);
   await client.realtime.publish(`game:${gameId}`, "game_started", {
     gameId,
     config,
@@ -792,7 +829,7 @@ async function runGameLoop(client, gameId, initialState, config) {
         const { system, user } = buildSummaryPrompt(round - 1, prevTurns, state.agents);
         const tSummary = Date.now();
         const completion = await client.ai.chat.completions.create({
-          model: SUMMARY_MODEL,
+          model: BACKEND_CONFIG.summaryModel,
           messages: [
             { role: "system", content: system },
             { role: "user", content: user }
@@ -800,7 +837,7 @@ async function runGameLoop(client, gameId, initialState, config) {
           temperature: 0.8,
           maxTokens: 200
         });
-        console.log(`[R${round}][summary] LLM call: ${Date.now() - tSummary}ms (${SUMMARY_MODEL})`);
+        console.log(`[R${round}][summary] LLM call: ${Date.now() - tSummary}ms (${BACKEND_CONFIG.summaryModel})`);
         const summaryText = completion.choices?.[0]?.message?.content ?? "No summary available.";
         await client.database.from("round_summaries").insert([{
           game_id: gameId,
@@ -927,7 +964,7 @@ async function runGameLoop(client, gameId, initialState, config) {
           eliminatedBy: turnAgent.agentId
         });
       }
-      await delay(TURN_DELAY_MS);
+      await delay(BACKEND_CONFIG.turnDelayMs);
     }
     state = { ...state, turnRecords: [...state.turnRecords, ...roundTurnRecords] };
     const winResult = checkWinCondition(state);

@@ -36,6 +36,30 @@ export type {
 export { DEFAULT_GAME_CONFIG } from './config.js';
 
 export {
+  HIT_ZONE_MODIFIERS,
+  ACTION_COSTS,
+  BACKEND_CONFIG,
+  AGENT_CONFIG_MAP,
+  AGENT_INITIAL_HP,
+  UI_CONFIG,
+  AGENT_COLORS,
+  AGENT_MODELS,
+} from './game-config.js';
+
+export type {
+  AgentConfigSchema,
+  HitZoneModifiersSchema,
+  ActionCostsSchema,
+  BackendConfigSchema,
+  GameConfigSchema,
+  UIConfigSchema,
+  AgentVisualConfigSchema,
+  ThemeConfigSchema,
+  AnimationConfigSchema,
+  CompleteConfigSchema,
+} from './config-schema.js';
+
+export {
   isInBounds,
   getAdjacentPosition,
   isAdjacent,

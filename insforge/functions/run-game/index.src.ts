@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@insforge/sdk';
 import {
   DEFAULT_GAME_CONFIG,
+  BACKEND_CONFIG,
   createInitialState,
   buildSharedView,
   buildPersonalView,
@@ -33,9 +34,6 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
-
-const SUMMARY_MODEL = 'openai/gpt-4o-mini';
-const TURN_DELAY_MS = 1500;
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -126,7 +124,7 @@ async function runGameLoop(
   await client.realtime.subscribe(`game:${gameId}`);
 
   // Small delay to let frontend subscribe
-  await delay(2000);
+  await delay(BACKEND_CONFIG.gameLoopDelayMs);
 
   await client.realtime.publish(`game:${gameId}`, 'game_started', {
     gameId,
@@ -148,7 +146,7 @@ async function runGameLoop(
         const { system, user } = buildSummaryPrompt(round - 1, prevTurns, state.agents);
         const tSummary = Date.now();
         const completion = await client.ai.chat.completions.create({
-          model: SUMMARY_MODEL,
+          model: BACKEND_CONFIG.summaryModel,
           messages: [
             { role: 'system', content: system },
             { role: 'user', content: user },
@@ -156,7 +154,7 @@ async function runGameLoop(
           temperature: 0.8,
           maxTokens: 200,
         });
-        console.log(`[R${round}][summary] LLM call: ${Date.now() - tSummary}ms (${SUMMARY_MODEL})`);
+        console.log(`[R${round}][summary] LLM call: ${Date.now() - tSummary}ms (${BACKEND_CONFIG.summaryModel})`);
         const summaryText = completion.choices?.[0]?.message?.content ?? 'No summary available.';
 
         await client.database.from('round_summaries').insert([{
@@ -317,7 +315,7 @@ async function runGameLoop(
         });
       }
 
-      await delay(TURN_DELAY_MS);
+      await delay(BACKEND_CONFIG.turnDelayMs);
     }
 
     state = { ...state, turnRecords: [...state.turnRecords, ...roundTurnRecords] };

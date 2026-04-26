@@ -5,12 +5,7 @@ import { AgentPanel } from './components/AgentPanel';
 import { LogViewer } from './components/LogViewer';
 import { GameControls } from './components/GameControls';
 import { Settings } from './components/Settings';
-
-const INITIAL_HP: Record<string, number> = {
-  opus: 25,
-  sonnet: 20,
-  haiku: 15,
-};
+import { AGENT_INITIAL_HP, UI_CONFIG, THEME } from './config';
 
 export function App() {
   const { state, startGame } = useGameState();
@@ -19,13 +14,13 @@ export function App() {
   return (
     <div
       style={{
-        maxWidth: 900,
+        maxWidth: UI_CONFIG.maxWidth,
         margin: '0 auto',
         padding: 24,
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        backgroundColor: '#0f172a',
+        backgroundColor: THEME.background.primary,
         minHeight: '100vh',
-        color: '#e2e8f0',
+        color: THEME.text.secondary,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -45,7 +40,7 @@ export function App() {
         onStartGame={startGame}
       />
 
-      <div style={{ display: 'flex', gap: 24, marginTop: 16 }}>
+      <div style={{ display: 'flex', gap: UI_CONFIG.gridGap, marginTop: 16 }}>
         <div>
           <Grid agents={state.agents} currentTurnAgent={state.currentTurnAgent} />
         </div>
@@ -56,7 +51,7 @@ export function App() {
                   key={agent.agentId}
                   agent={agent}
                   isCurrentTurn={agent.agentId === state.currentTurnAgent}
-                  maxHp={INITIAL_HP[agent.agentId] ?? 20}
+                  maxHp={AGENT_INITIAL_HP[agent.agentId] ?? 20}
                   debugMode={debugMode}
                 />
               ))
@@ -66,14 +61,14 @@ export function App() {
                   agent={{
                     agentId: id,
                     position: { x: 0, y: 0 },
-                    hp: INITIAL_HP[id] ?? 20,
+                    hp: AGENT_INITIAL_HP[id] ?? 20,
                     orientation: 'N',
                     status: 'alive',
                     speed: id === 'haiku' ? 4 : id === 'sonnet' ? 3 : 2,
                     eliminatedAtRound: null,
                   }}
                   isCurrentTurn={false}
-                  maxHp={INITIAL_HP[id] ?? 20}
+                  maxHp={AGENT_INITIAL_HP[id] ?? 20}
                   debugMode={debugMode}
                 />
               ))}

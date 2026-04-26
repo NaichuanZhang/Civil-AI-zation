@@ -1,16 +1,5 @@
 import type { AgentUIState } from '../types';
-
-const AGENT_COLORS: Record<string, string> = {
-  opus: '#8b5cf6',
-  sonnet: '#3b82f6',
-  haiku: '#22c55e',
-};
-
-const AGENT_MODELS: Record<string, string> = {
-  opus: 'GPT-4o Mini',
-  sonnet: 'GPT-4o Mini',
-  haiku: 'GPT-4o Mini',
-};
+import { AGENT_COLORS, AGENT_MODELS, THEME } from '../config';
 
 function formatAction(action: { type: string; direction?: string; target?: string }): string {
   switch (action.type) {
