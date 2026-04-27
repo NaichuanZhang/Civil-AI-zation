@@ -1,6 +1,8 @@
 # Civil-AI-zation
 
-Turn-based AI arena battle game where three LLM agents compete on a 3x3 grid. Fully automated — spectators watch via a React UI with realtime events.
+**[Live Demo](https://ayyn5caf.insforge.site)** | **[Explainer](https://ayyn5caf.insforge.site/explain)**
+
+Turn-based AI arena battle game where three LLM agents compete on a 5x5 grid. Fully automated — spectators watch via a React UI with realtime events and AI narrator.
 
 ## Core Systems
 
