@@ -6,6 +6,8 @@ const agentName = (id: string) => AGENT_NAMES[id] ?? id;
 
 interface EventLogProps {
   entries: EventLogEntry[];
+  style?: React.CSSProperties;
+  hideHeader?: boolean;
 }
 
 function formatEntry(entry: EventLogEntry): string {
@@ -36,7 +38,7 @@ function formatEntry(entry: EventLogEntry): string {
   }
 }
 
-export function EventLog({ entries }: EventLogProps) {
+export function EventLog({ entries, style, hideHeader = false }: EventLogProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,9 +56,10 @@ export function EventLog({ entries }: EventLogProps) {
         overflowY: 'auto',
         fontSize: 12,
         lineHeight: 1.6,
+        ...style,
       }}
     >
-      <div style={{ fontWeight: 'bold', color: '#94a3b8', marginBottom: 8 }}>Event Log</div>
+      {!hideHeader && <div style={{ fontWeight: 'bold', color: '#94a3b8', marginBottom: 8 }}>Event Log</div>}
       {entries.length === 0 && (
         <div style={{ color: '#475569' }}>Waiting for game to start...</div>
       )}

@@ -2,7 +2,7 @@ import { Volume2, VolumeX, SkipForward, Minimize2, Mic } from 'lucide-react';
 import { useNarratorContext } from '../contexts/NarratorContext';
 import { THEME } from '../config';
 
-export function Narrator() {
+export function Narrator({ inline = false }: { inline?: boolean }) {
   const {
     enabled,
     narratorState,
@@ -16,7 +16,7 @@ export function Narrator() {
   if (!enabled) return null;
 
   if (narratorState.isMinimized) {
-    return <NarratorMinimized onExpand={() => setIsMinimized(false)} />;
+    return <NarratorMinimized onExpand={() => setIsMinimized(false)} inline={inline} />;
   }
 
   const isSpeaking = narratorState.status === 'speaking';
@@ -25,11 +25,10 @@ export function Narrator() {
   return (
     <div
       style={{
-        position: 'fixed',
-        bottom: 24,
-        left: 24,
-        zIndex: 1000,
-        width: 280,
+        position: inline ? 'relative' : 'fixed',
+        ...(inline ? {} : { bottom: 24, left: 24 }),
+        zIndex: inline ? 0 : 1000,
+        width: inline ? '100%' : 280,
         borderRadius: 12,
         overflow: 'hidden',
         backgroundColor: THEME.background.secondary,
@@ -44,7 +43,7 @@ export function Narrator() {
         <div
           ref={avatarContainerRef}
           style={{
-            width: 280,
+            width: '100%',
             height: 200,
             backgroundColor: THEME.background.primary,
             display: 'flex',
@@ -213,15 +212,14 @@ export function Narrator() {
   );
 }
 
-function NarratorMinimized({ onExpand }: { onExpand: () => void }) {
+function NarratorMinimized({ onExpand, inline = false }: { onExpand: () => void; inline?: boolean }) {
   return (
     <button
       onClick={onExpand}
       style={{
-        position: 'fixed',
-        bottom: 24,
-        left: 24,
-        zIndex: 1000,
+        position: inline ? 'relative' : 'fixed',
+        ...(inline ? {} : { bottom: 24, left: 24 }),
+        zIndex: inline ? 0 : 1000,
         width: 40,
         height: 40,
         borderRadius: '50%',

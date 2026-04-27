@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { LandingPage } from './landing';
 import { App } from './App';
+import { ExplainPage } from './explain';
 import { LogProvider } from './contexts/LogContext';
 import './index.css';
 
@@ -19,6 +20,7 @@ if (root) {
             </LogProvider>
           }
         />
+        <Route path="/explain" element={<ExplainPage />} />
       </Routes>
     </BrowserRouter>
   );

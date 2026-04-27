@@ -34,7 +34,7 @@ var AGENT_CONFIG_MAP = {
     modelId: "zai/glm-5-turbo",
     speed: 2,
     hp: 25,
-    startPosition: { x: 0, y: 2 },
+    startPosition: { x: 0, y: 4 },
     startOrientation: "up",
     maxTokens: 1024
   },
@@ -42,7 +42,7 @@ var AGENT_CONFIG_MAP = {
     modelId: "openai/gpt-4o-mini",
     speed: 3,
     hp: 20,
-    startPosition: { x: 2, y: 2 },
+    startPosition: { x: 4, y: 4 },
     startOrientation: "left",
     maxTokens: 1024
   },
@@ -50,7 +50,7 @@ var AGENT_CONFIG_MAP = {
     modelId: "openai/gpt-4o-mini",
     speed: 4,
     hp: 15,
-    startPosition: { x: 1, y: 0 },
+    startPosition: { x: 2, y: 0 },
     startOrientation: "down",
     maxTokens: 1024
   }
@@ -71,8 +71,8 @@ var CHEST_CONFIG = {
   // Max unopened chests on the board at once
 };
 var DEFAULT_GAME_CONFIG = {
-  mapWidth: 3,
-  mapHeight: 3,
+  mapWidth: 5,
+  mapHeight: 5,
   maxRounds: 30,
   baseAttackDamage: 5,
   restEpBonus: 1,
