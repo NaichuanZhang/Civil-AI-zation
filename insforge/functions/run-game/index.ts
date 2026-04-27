@@ -1095,6 +1095,28 @@ async function index_src_default(req) {
     return jsonResponse({ error: error.message }, 500);
   }
 }
+function parseActionsFromContent(content) {
+  const actions = [];
+  const pattern = /\b(move|attack|turn|rest):(up|down|left|right|opus|sonnet|haiku)\b/gi;
+  let match;
+  while ((match = pattern.exec(content)) !== null) {
+    const type = match[1].toLowerCase();
+    const param = match[2].toLowerCase();
+    if (type === "move" && ["up", "down", "left", "right"].includes(param)) {
+      actions.push({ type: "move", direction: param });
+    } else if (type === "attack" && ["opus", "sonnet", "haiku"].includes(param)) {
+      actions.push({ type: "attack", target: param });
+    } else if (type === "turn" && ["up", "down", "left", "right"].includes(param)) {
+      actions.push({ type: "turn", direction: param });
+    } else if (type === "rest") {
+      actions.push({ type: "rest" });
+    }
+  }
+  if (actions.length > 0) {
+    console.log(`[parseActionsFromContent] Extracted ${actions.length} actions from content text`);
+  }
+  return actions.length > 0 ? actions : [{ type: "rest" }];
+}
 async function runGameLoop(client, gameId, initialState, config) {
   let state = initialState;
   await client.realtime.connect();
@@ -1206,19 +1228,23 @@ async function runGameLoop(client, gameId, initialState, config) {
         rawResponse = completion;
         const message = completion.choices?.[0]?.message;
         const thinkingReasoning = message?.reasoning_content || "";
-        const toolCall = message?.tool_calls?.[0];
-        if (toolCall) {
+        const toolCalls = message?.tool_calls;
+        if (toolCalls && toolCalls.length > 0) {
           let toolReasoning = "";
           try {
-            const toolArgs = JSON.parse(toolCall.function.arguments);
+            const toolArgs = JSON.parse(toolCalls[0].function.arguments);
             toolReasoning = toolArgs.reasoning || "";
           } catch {
           }
           reasoning = thinkingReasoning || toolReasoning || message?.content || "";
-          parsedActions = parseToolCall(toolCall);
-          if (parsedActions.length === 0) parsedActions = [{ type: "rest" }];
+          const merged = [];
+          for (const tc of toolCalls) {
+            merged.push(...parseToolCall(tc));
+          }
+          parsedActions = merged.length > 0 ? merged : [{ type: "rest" }];
         } else {
           reasoning = thinkingReasoning || message?.content || "";
+          parsedActions = parseActionsFromContent(message?.content || "");
         }
       } catch (err) {
         console.error(`LLM call failed for ${turnAgent.agentId}:`, err);

@@ -80,7 +80,6 @@ async function callLlm(
       messages: params.messages,
       temperature: params.temperature ?? 0.7,
       max_tokens: params.maxTokens ?? 500,
-      thinking: { type: 'enabled' },
     };
     if (params.tools?.length) {
       body.tools = params.tools;
@@ -177,6 +176,29 @@ export default async function (req: Request): Promise<Response> {
   } catch (error) {
     return jsonResponse({ error: (error as Error).message }, 500);
   }
+}
+
+function parseActionsFromContent(content: string): AgentAction[] {
+  const actions: AgentAction[] = [];
+  const pattern = /\b(move|attack|turn|rest):(up|down|left|right|opus|sonnet|haiku)\b/gi;
+  let match;
+  while ((match = pattern.exec(content)) !== null) {
+    const type = match[1].toLowerCase();
+    const param = match[2].toLowerCase();
+    if (type === 'move' && ['up', 'down', 'left', 'right'].includes(param)) {
+      actions.push({ type: 'move', direction: param as 'up' | 'down' | 'left' | 'right' });
+    } else if (type === 'attack' && ['opus', 'sonnet', 'haiku'].includes(param)) {
+      actions.push({ type: 'attack', target: param as AgentId });
+    } else if (type === 'turn' && ['up', 'down', 'left', 'right'].includes(param)) {
+      actions.push({ type: 'turn', direction: param as 'up' | 'down' | 'left' | 'right' });
+    } else if (type === 'rest') {
+      actions.push({ type: 'rest' });
+    }
+  }
+  if (actions.length > 0) {
+    console.log(`[parseActionsFromContent] Extracted ${actions.length} actions from content text`);
+  }
+  return actions.length > 0 ? actions : [{ type: 'rest' }];
 }
 
 async function runGameLoop(
@@ -321,20 +343,25 @@ async function runGameLoop(
         const message = completion.choices?.[0]?.message;
         const thinkingReasoning = message?.reasoning_content || '';
 
-        const toolCall = message?.tool_calls?.[0];
-        if (toolCall) {
+        const toolCalls = message?.tool_calls;
+        if (toolCalls && toolCalls.length > 0) {
           let toolReasoning = '';
           try {
-            const toolArgs = JSON.parse(toolCall.function.arguments);
+            const toolArgs = JSON.parse(toolCalls[0].function.arguments);
             toolReasoning = toolArgs.reasoning || '';
-          } catch {
-            // ignore parse errors
-          }
+          } catch { /* ignore */ }
           reasoning = thinkingReasoning || toolReasoning || message?.content || '';
-          parsedActions = parseToolCall(toolCall);
-          if (parsedActions.length === 0) parsedActions = [{ type: 'rest' }];
+
+          // Merge actions from all tool_calls (some models split into multiple calls)
+          const merged: AgentAction[] = [];
+          for (const tc of toolCalls) {
+            merged.push(...parseToolCall(tc));
+          }
+          parsedActions = merged.length > 0 ? merged : [{ type: 'rest' }];
         } else {
           reasoning = thinkingReasoning || message?.content || '';
+          // Fallback: try to extract actions from content text
+          parsedActions = parseActionsFromContent(message?.content || '');
         }
       } catch (err) {
         console.error(`LLM call failed for ${turnAgent.agentId}:`, err);
