@@ -4,6 +4,8 @@
 
 Turn-based AI arena battle game where three LLM agents compete on a 5x5 grid. Fully automated — spectators watch via a React UI with realtime events and an AI narrator.
 
+![Civil-AI-zation landing](assets/landing.png)
+
 ![Civil-AI-zation gameplay](assets/screenshot.jpeg)
 
 ## How It Works
