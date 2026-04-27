@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { insforge } from '../insforge';
 import { AGENT_NAMES } from '../config';
-import type { GameUIState, EventLogEntry, AgentUIState } from '../types';
+import type { GameUIState, EventLogEntry, AgentUIState, ThoughtBubbleData } from '../types';
+import { THOUGHT_BUBBLE_CONFIG } from '../config';
 
 const agentName = (id: string) => AGENT_NAMES[id] ?? id;
 
@@ -22,6 +23,7 @@ const INITIAL_STATE: GameUIState = {
   result: null,
   currentTurnAgent: null,
   attackedAgents: [],
+  thoughtBubbles: [],
 };
 
 const REPLAY_DELAYS: Record<number, number> = {
@@ -267,6 +269,7 @@ export function useSpectate(gameId?: string | null) {
             result: null,
             currentTurnAgent: null,
             attackedAgents: [],
+            thoughtBubbles: [],
           });
           setIsReplay(false);
           setIsLoading(false);
@@ -370,12 +373,36 @@ export function useSpectate(gameId?: string | null) {
                 }
               }
 
+              const finalAgentState = updatedAgents.find((a) => a.agentId === agentId);
+              const newBubble: ThoughtBubbleData | null = reasoning && finalAgentState
+                ? {
+                    agentId,
+                    reasoning,
+                    timestamp: Date.now(),
+                    gridPosition: { ...finalAgentState.position },
+                  }
+                : null;
+
+              if (newBubble) {
+                const ts = newBubble.timestamp;
+                setTimeout(() => {
+                  setState((prev) => ({
+                    ...prev,
+                    thoughtBubbles: prev.thoughtBubbles.filter((tb) => tb.timestamp !== ts),
+                  }));
+                }, THOUGHT_BUBBLE_CONFIG.displayDurationMs);
+              }
+
               return {
                 ...s,
                 agents: updatedAgents,
                 chests,
                 currentTurnAgent: null,
                 eventLog: [...s.eventLog, ...newEntries],
+                thoughtBubbles: [
+                  ...s.thoughtBubbles.filter((tb) => tb.agentId !== agentId),
+                  ...(newBubble ? [newBubble] : []),
+                ],
               };
             });
           });
@@ -435,6 +462,7 @@ export function useSpectate(gameId?: string | null) {
               : null,
             currentTurnAgent: null,
             attackedAgents: [],
+            thoughtBubbles: [],
           });
           setIsReplay(true);
           setIsLoading(false);

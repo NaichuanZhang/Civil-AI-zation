@@ -111,6 +111,16 @@ export const GAME_CONFIG = {
 /**
  * Narrator Configuration
  */
+export const THOUGHT_BUBBLE_CONFIG = {
+  displayDurationMs: 6000,
+  maxChars: 150,
+  typewriterCharsPerTick: 2,
+  typewriterTickMs: 30,
+  yOffsetPct: 10,
+  maxWidth: 220,
+  minWidth: 120,
+} as const;
+
 export const NARRATOR_CONFIG = {
   containerWidth: 280,
   avatarHeight: 200,

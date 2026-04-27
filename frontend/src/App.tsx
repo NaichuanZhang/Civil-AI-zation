@@ -8,6 +8,7 @@ import logoUrl from '@assets/logo.png';
 import dashboardBgUrl from '@assets/dashboard-bg.png';
 import { Settings } from './components/Settings';
 import { Narrator } from './components/Narrator';
+import { ThoughtBubbles } from './components/ThoughtBubbles';
 import { NarratorProvider } from './contexts/NarratorContext';
 import { AGENT_INITIAL_HP, AGENT_STATS, AGENT_NAMES, AGENT_COLORS } from './config';
 
@@ -70,6 +71,11 @@ export function App() {
         {/* Full-screen map + grid */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
           <Grid agents={state.agents} chests={state.chests} currentTurnAgent={state.currentTurnAgent} attackedAgents={state.attackedAgents} debugMode={debugMode} />
+        </div>
+
+        {/* Thought bubble overlay — screen-space, above grid, below UI */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 5, pointerEvents: 'none' }}>
+          <ThoughtBubbles bubbles={state.thoughtBubbles} gridSize={5} />
         </div>
 
         {/* Top bar: logo, start, settings */}

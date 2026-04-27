@@ -27,7 +27,7 @@ const AGENT_FIGURES: Record<string, Record<string, string>> = {
  * Board corner positions as (width%, height%) of the container.
  * Adjust these to align the grid with the background chessboard.
  */
-const DEFAULT_CORNERS = {
+export const DEFAULT_CORNERS = {
   tl: { w: 38.4, h: 30.6 },
   tr: { w: 63.9, h: 30.6 },
   bl: { w: 35.3, h: 69.3 },

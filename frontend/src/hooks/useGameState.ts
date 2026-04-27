@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { insforge } from '../insforge';
 import { useLog } from '../contexts/LogContext';
 import { AGENT_NAMES } from '../config';
-import type { GameUIState, EventLogEntry } from '../types';
+import type { GameUIState, EventLogEntry, ThoughtBubbleData } from '../types';
+import { THOUGHT_BUBBLE_CONFIG } from '../config';
 
 const agentName = (id: string) => AGENT_NAMES[id] ?? id;
 
@@ -16,6 +17,7 @@ const INITIAL_STATE: GameUIState = {
   result: null,
   currentTurnAgent: null,
   attackedAgents: [],
+  thoughtBubbles: [],
 };
 
 export function useGameState() {
@@ -250,6 +252,25 @@ export function useGameState() {
             }, 800);
           }
 
+          const newBubble: ThoughtBubbleData | null = reasoning && finalAgentState
+            ? {
+                agentId,
+                reasoning,
+                timestamp: Date.now(),
+                gridPosition: { ...finalAgentState.position },
+              }
+            : null;
+
+          if (newBubble) {
+            const ts = newBubble.timestamp;
+            setTimeout(() => {
+              setState((prev) => ({
+                ...prev,
+                thoughtBubbles: prev.thoughtBubbles.filter((tb) => tb.timestamp !== ts),
+              }));
+            }, THOUGHT_BUBBLE_CONFIG.displayDurationMs);
+          }
+
           return {
             ...s,
             agents,
@@ -257,6 +278,10 @@ export function useGameState() {
             currentTurnAgent: null,
             attackedAgents: [...new Set([...s.attackedAgents, ...attackedTargets])],
             eventLog: [...s.eventLog, ...newEntries],
+            thoughtBubbles: [
+              ...s.thoughtBubbles.filter((tb) => tb.agentId !== agentId),
+              ...(newBubble ? [newBubble] : []),
+            ],
           };
         });
       });

@@ -35,6 +35,13 @@ export interface EventLogEntry {
   eliminatedBy?: string;
 }
 
+export interface ThoughtBubbleData {
+  agentId: string;
+  reasoning: string;
+  timestamp: number;
+  gridPosition: { x: number; y: number };
+}
+
 export interface ChestUIState {
   position: { x: number; y: number };
 }
@@ -49,4 +56,5 @@ export interface GameUIState {
   result: { winner: string | null; type: string } | null;
   currentTurnAgent: string | null;
   attackedAgents: string[];
+  thoughtBubbles: ThoughtBubbleData[];
 }
