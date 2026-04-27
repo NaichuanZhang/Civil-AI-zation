@@ -29,7 +29,7 @@ export function GameStartButton({ status, onStartGame }: GameStartButtonProps) {
         borderRadius: 10,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
         flexShrink: 0,
-        backgroundColor: '#ebe4d8',
+        backgroundColor: 'transparent',
         backgroundImage: `url(${dashboardBgUrl})`,
         backgroundSize: 'auto 100%',
         backgroundPosition: 'center',

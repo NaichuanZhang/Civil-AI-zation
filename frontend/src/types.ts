@@ -48,4 +48,5 @@ export interface GameUIState {
   eventLog: EventLogEntry[];
   result: { winner: string | null; type: string } | null;
   currentTurnAgent: string | null;
+  attackedAgents: string[];
 }

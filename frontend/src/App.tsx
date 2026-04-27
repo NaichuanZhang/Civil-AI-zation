@@ -29,6 +29,7 @@ export function App() {
             <AgentPanel
               agent={agent}
               isCurrentTurn={agent.agentId === state.currentTurnAgent}
+              isAttacked={state.attackedAgents.includes(agent.agentId)}
               maxHp={AGENT_INITIAL_HP[agent.agentId as keyof typeof AGENT_INITIAL_HP] ?? 20}
               debugMode={debugMode}
             />
@@ -67,7 +68,7 @@ export function App() {
       >
         {/* Full-screen map + grid */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-          <Grid agents={state.agents} chests={state.chests} currentTurnAgent={state.currentTurnAgent} debugMode={debugMode} />
+          <Grid agents={state.agents} chests={state.chests} currentTurnAgent={state.currentTurnAgent} attackedAgents={state.attackedAgents} debugMode={debugMode} />
         </div>
 
         {/* Top bar: logo, start, settings */}

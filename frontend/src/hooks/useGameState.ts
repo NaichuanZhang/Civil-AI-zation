@@ -15,6 +15,7 @@ const INITIAL_STATE: GameUIState = {
   eventLog: [],
   result: null,
   currentTurnAgent: null,
+  attackedAgents: [],
 };
 
 export function useGameState() {
@@ -235,11 +236,26 @@ export function useGameState() {
             }
           }
 
+          const attackedTargets = results
+            .filter((r) => r?.type === 'attack' && r.damage)
+            .map((r) => r!.target!)
+            .filter(Boolean);
+
+          if (attackedTargets.length > 0) {
+            setTimeout(() => {
+              setState((prev) => ({
+                ...prev,
+                attackedAgents: prev.attackedAgents.filter((id) => !attackedTargets.includes(id)),
+              }));
+            }, 800);
+          }
+
           return {
             ...s,
             agents,
             chests,
             currentTurnAgent: null,
+            attackedAgents: [...new Set([...s.attackedAgents, ...attackedTargets])],
             eventLog: [...s.eventLog, ...newEntries],
           };
         });

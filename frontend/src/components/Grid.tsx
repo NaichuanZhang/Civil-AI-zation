@@ -3,17 +3,29 @@ import type { AgentUIState, ChestUIState } from '../types';
 import { AGENT_NAMES } from '../config';
 import mapUrl from '@assets/map.png';
 
-const AGENT_COLORS: Record<string, string> = {
-  opus: '#8b5cf6',
-  sonnet: '#3b82f6',
-  haiku: '#22c55e',
+import glmBack from '@assets/figure/glm/glm-backview_256.png';
+import glmFront from '@assets/figure/glm/glm-frontview_256.png';
+import glmLeft from '@assets/figure/glm/glm-leftview_256.png';
+import glmRight from '@assets/figure/glm/glm-rightview_256.png';
+import gptBack from '@assets/figure/gpt/gpt-backview_256.png';
+import gptFront from '@assets/figure/gpt/gpt-frontview_256.png';
+import gptLeft from '@assets/figure/gpt/gpt-leftview_256.png';
+import gptRight from '@assets/figure/gpt/gpt-rightview_256.png';
+import claudeBack from '@assets/figure/claude/claude-backview_256.png';
+import claudeFront from '@assets/figure/claude/claude-frontview_256.png';
+import claudeLeft from '@assets/figure/claude/claude-leftview_256.png';
+import claudeRight from '@assets/figure/claude/claude-rightview_256.png';
+
+const AGENT_FIGURES: Record<string, Record<string, string>> = {
+  opus: { up: glmBack, down: glmFront, left: glmLeft, right: glmRight },
+  sonnet: { up: gptBack, down: gptFront, left: gptLeft, right: gptRight },
+  haiku: { up: claudeBack, down: claudeFront, left: claudeLeft, right: claudeRight },
 };
 
-const DIR_ARROWS: Record<string, string> = {
-  up: '↑',
-  down: '↓',
-  left: '←',
-  right: '→',
+const AGENT_COLORS: Record<string, string> = {
+  opus: '#3b82f6',
+  sonnet: '#22c55e',
+  haiku: '#f97316',
 };
 
 /**
@@ -25,6 +37,11 @@ const DEFAULT_CORNERS = {
   tr: { w: 63.9, h: 30.6 },
   bl: { w: 35.3, h: 69.3 },
   br: { w: 66.5, h: 69.3 },
+};
+
+const DEFAULT_FIGURE = {
+  scale: 200,
+  offsetY: -55,
 };
 
 type CornerKey = 'tl' | 'tr' | 'bl' | 'br';
@@ -83,15 +100,18 @@ interface GridProps {
   agents: AgentUIState[];
   chests: ChestUIState[];
   currentTurnAgent: string | null;
+  attackedAgents: string[];
   gridSize?: number;
   debugMode?: boolean;
 }
 
-export function Grid({ agents, chests, currentTurnAgent, gridSize = 5, debugMode = false }: GridProps) {
+export function Grid({ agents, chests, currentTurnAgent, attackedAgents, gridSize = 5, debugMode = false }: GridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dims, setDims] = useState({ w: 1000, h: 600 });
   const [corners, setCorners] = useState<Corners>(DEFAULT_CORNERS);
+  const [figure, setFigure] = useState(DEFAULT_FIGURE);
   const dragging = useRef<CornerKey | null>(null);
+  const draggingFigure = useRef<{ startY: number; startOffsetY: number } | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -110,7 +130,21 @@ export function Grid({ agents, chests, currentTurnAgent, gridSize = 5, debugMode
     dragging.current = key;
   }, []);
 
+  const handleFigurePointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    draggingFigure.current = { startY: e.clientY, startOffsetY: figure.offsetY };
+  }, [figure.offsetY]);
+
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (draggingFigure.current) {
+      const dy = e.clientY - draggingFigure.current.startY;
+      const containerH = containerRef.current?.clientHeight ?? 600;
+      const pct = (dy / containerH) * 100;
+      setFigure((prev) => ({ ...prev, offsetY: Math.round((draggingFigure.current!.startOffsetY + pct) * 10) / 10 }));
+      return;
+    }
     if (!dragging.current || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const w = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
@@ -121,6 +155,12 @@ export function Grid({ agents, chests, currentTurnAgent, gridSize = 5, debugMode
 
   const handlePointerUp = useCallback(() => {
     dragging.current = null;
+    draggingFigure.current = null;
+  }, []);
+
+  const handleFigureWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    setFigure((prev) => ({ ...prev, scale: Math.max(50, Math.round(prev.scale - e.deltaY / 5)) }));
   }, []);
 
   const { w: cw, h: ch } = dims;
@@ -143,6 +183,7 @@ export function Grid({ agents, chests, currentTurnAgent, gridSize = 5, debugMode
       );
       const chest = chests.find((c) => c.position.x === x && c.position.y === y);
       const isActive = agent?.agentId === currentTurnAgent;
+      const isAttacked = agent ? attackedAgents.includes(agent.agentId) : false;
 
       cells.push(
         <div
@@ -161,36 +202,69 @@ export function Grid({ agents, chests, currentTurnAgent, gridSize = 5, debugMode
               : 'transparent',
             position: 'relative',
             boxSizing: 'border-box',
+            overflow: 'visible',
           }}
         >
-          {agent ? (
-            <div
-              style={{
-                width: 'clamp(32px, 40%, 48px)',
-                height: 'clamp(32px, 40%, 48px)',
-                borderRadius: '50%',
-                backgroundColor: AGENT_COLORS[agent.agentId] ?? '#666',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'column',
-                color: '#fff',
-                fontSize: 'clamp(8px, 2.8vw, 11px)',
-                fontWeight: 'bold',
-                boxShadow: isActive
-                  ? `0 0 12px 4px ${AGENT_COLORS[agent.agentId] ?? '#666'}`
-                  : 'none',
-                transition: 'box-shadow 0.3s',
-              }}
-            >
-              <span style={{ fontSize: 'clamp(12px, 4vw, 16px)' }}>
-                {DIR_ARROWS[agent.orientation] ?? '?'}
-              </span>
-              <span style={{ fontSize: 'clamp(7px, 2vw, 9px)' }}>
-                {(AGENT_NAMES[agent.agentId] ?? agent.agentId)[0]?.toUpperCase()}
-              </span>
-            </div>
-          ) : chest ? (
+          {agent ? (() => {
+            const isFirstAgent = agents.findIndex((a) => a.status === 'alive') === agents.indexOf(agent);
+            const canDrag = debugMode && isFirstAgent;
+            const figureFilter = isAttacked
+              ? 'drop-shadow(0 0 10px #ef4444) drop-shadow(0 0 20px #ef4444)'
+              : isActive
+                ? `drop-shadow(0 0 8px ${AGENT_COLORS[agent.agentId] ?? '#666'})`
+                : 'none';
+            return (
+              <div
+                onPointerDown={canDrag ? handleFigurePointerDown : undefined}
+                onWheel={canDrag ? handleFigureWheel : undefined}
+                style={{
+                  position: 'absolute',
+                  width: `${figure.scale}%`,
+                  height: `${figure.scale}%`,
+                  top: `${50 + figure.offsetY}%`,
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: y + 1,
+                  filter: figureFilter,
+                  animation: isAttacked ? 'shake-hit 0.6s ease-in-out' : 'none',
+                  transition: 'filter 0.3s',
+                  cursor: canDrag ? 'grab' : 'default',
+                  pointerEvents: canDrag ? 'auto' : 'none',
+                }}
+              >
+                <img
+                  src={AGENT_FIGURES[agent.agentId]?.[agent.orientation]}
+                  alt={`${agent.agentId} facing ${agent.orientation}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    pointerEvents: 'none',
+                  }}
+                />
+                {canDrag && (
+                  <span style={{
+                    position: 'absolute',
+                    top: -16,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: 10,
+                    color: '#fbbf24',
+                    background: 'rgba(0,0,0,0.8)',
+                    padding: '1px 4px',
+                    borderRadius: 3,
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                  }}>
+                    {figure.scale}% Y:{figure.offsetY}%
+                  </span>
+                )}
+              </div>
+            );
+          })() : chest ? (
             <span style={{ fontSize: 'clamp(18px, 5vw, 24px)' }}>📦</span>
           ) : null}
           {debugMode && (

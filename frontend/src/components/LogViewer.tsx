@@ -88,7 +88,7 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
       style={{
         border: parchmentBorder,
         borderRadius: 10,
-        backgroundColor: '#ebe4d8',
+        backgroundColor: 'transparent',
         backgroundImage: `url(${dashboardBgUrl})`,
         backgroundSize: '100% auto',
         backgroundPosition: 'top center',

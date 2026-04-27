@@ -1,5 +1,17 @@
 import type { AgentUIState } from '../types';
-import { AGENT_COLORS, AGENT_NAMES, AGENT_MODELS, THEME } from '../config';
+import { AGENT_COLORS, AGENT_NAMES, AGENT_MODELS } from '../config';
+import dashboardBgUrl from '@assets/dashboard-bg.png';
+import glmLogoUrl from '@assets/logo/glm.png';
+import gptLogoUrl from '@assets/logo/gpt.png';
+import claudeLogoUrl from '@assets/logo/claude.png';
+
+const MAX_EP = 3;
+
+const AGENT_AVATARS: Record<string, string> = {
+  opus: glmLogoUrl,
+  sonnet: gptLogoUrl,
+  haiku: claudeLogoUrl,
+};
 
 function formatAction(action: { type: string; direction?: string; target?: string }): string {
   switch (action.type) {
@@ -21,53 +33,86 @@ function formatAction(action: { type: string; direction?: string; target?: strin
 interface AgentPanelProps {
   agent: AgentUIState;
   isCurrentTurn: boolean;
+  isAttacked?: boolean;
   maxHp: number;
   debugMode?: boolean;
 }
 
-export function AgentPanel({ agent, isCurrentTurn, maxHp, debugMode = false }: AgentPanelProps) {
+export function AgentPanel({ agent, isCurrentTurn, isAttacked = false, maxHp, debugMode = false }: AgentPanelProps) {
   const hpPercent = maxHp > 0 ? (agent.hp / maxHp) * 100 : 0;
   const hpColor = hpPercent > 50 ? '#22c55e' : hpPercent > 25 ? '#eab308' : '#ef4444';
+  const ep = agent.ep ?? 0;
+  const epPercent = MAX_EP > 0 ? (ep / MAX_EP) * 100 : 0;
   const eliminated = agent.status === 'eliminated';
+  const avatarUrl = AGENT_AVATARS[agent.agentId];
+
+  const borderColor = isAttacked
+    ? '#ef4444'
+    : isCurrentTurn
+      ? AGENT_COLORS[agent.agentId] ?? '#666'
+      : 'rgba(68, 55, 40, 0.4)';
 
   return (
     <div
       style={{
-        border: `2px solid ${isCurrentTurn ? AGENT_COLORS[agent.agentId] ?? '#666' : '#334155'}`,
+        border: `2px solid ${borderColor}`,
         borderRadius: 8,
         padding: 12,
-        backgroundColor: eliminated ? '#1a1a2e' : '#1e293b',
+        backgroundImage: `url(${dashboardBgUrl})`,
+        backgroundSize: '100% 100%',
+        backgroundPosition: 'center',
+        overflow: 'hidden',
         opacity: eliminated ? 0.6 : 1,
         minWidth: 160,
+        boxShadow: isAttacked ? '0 0 12px rgba(239, 68, 68, 0.6)' : 'none',
+        animation: isAttacked ? 'shake-panel 0.6s ease-in-out' : 'none',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <div
-          style={{
-            width: 12,
-            height: 12,
-            borderRadius: '50%',
-            backgroundColor: AGENT_COLORS[agent.agentId] ?? '#666',
-          }}
-        />
-        <span style={{ fontWeight: 'bold', color: '#f1f5f9', fontSize: 14 }}>
-          {AGENT_NAMES[agent.agentId] ?? agent.agentId.toUpperCase()}
-        </span>
+      {/* Name row with avatar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={AGENT_NAMES[agent.agentId] ?? agent.agentId}
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              objectFit: 'cover',
+              border: `2px solid ${AGENT_COLORS[agent.agentId] ?? '#666'}`,
+              backgroundColor: '#f5f0e8',
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              backgroundColor: AGENT_COLORS[agent.agentId] ?? '#666',
+            }}
+          />
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ fontWeight: 'bold', color: '#2c1810', fontSize: 13 }}>
+            {AGENT_NAMES[agent.agentId] ?? agent.agentId.toUpperCase()}
+          </span>
+          <div style={{ fontSize: 9, color: '#6b5344' }}>
+            Speed {agent.speed}
+          </div>
+        </div>
         {isCurrentTurn && (
-          <span style={{ fontSize: 10, color: '#fbbf24', marginLeft: 'auto' }}>ACTING</span>
+          <span style={{ fontSize: 10, color: '#b45309', fontWeight: 'bold' }}>ACTING</span>
         )}
       </div>
 
-      <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 8 }}>
-        {AGENT_MODELS[agent.agentId] ?? 'Unknown'} | Speed {agent.speed}
-      </div>
-
+      {/* Health bar */}
       <div style={{ marginBottom: 4 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8' }}>
-          <span>HP</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b5344' }}>
+          <span>Health</span>
           <span>{agent.hp}/{maxHp}</span>
         </div>
-        <div style={{ height: 8, backgroundColor: '#334155', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ height: 8, backgroundColor: 'rgba(68, 55, 40, 0.2)', borderRadius: 4, overflow: 'hidden' }}>
           <div
             style={{
               height: '100%',
@@ -80,37 +125,59 @@ export function AgentPanel({ agent, isCurrentTurn, maxHp, debugMode = false }: A
         </div>
       </div>
 
-      <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', gap: 12 }}>
-        <span>Pos: ({agent.position.x},{agent.position.y})</span>
-        <span>Facing: {agent.orientation}</span>
+      {/* Energy bar */}
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b5344' }}>
+          <span>Energy</span>
+          <span>{ep}/{MAX_EP}</span>
+        </div>
+        <div style={{ height: 8, backgroundColor: 'rgba(68, 55, 40, 0.2)', borderRadius: 4, overflow: 'hidden' }}>
+          <div
+            style={{
+              height: '100%',
+              width: `${epPercent}%`,
+              backgroundColor: '#3b82f6',
+              borderRadius: 4,
+              transition: 'width 0.5s ease',
+            }}
+          />
+        </div>
       </div>
 
+      {/* Last action badge */}
+      {agent.lastAction && (
+        <div style={{ marginBottom: 4 }}>
+          <span
+            style={{
+              display: 'inline-block',
+              fontSize: 10,
+              fontWeight: 'bold',
+              color: '#6b3a10',
+              backgroundColor: '#c9956b',
+              border: '1px solid #a0724a',
+              borderRadius: 10,
+              padding: '2px 8px',
+            }}
+          >
+            {formatAction(agent.lastAction)}
+          </span>
+        </div>
+      )}
+
+      {/* Facing — always visible */}
+      <div style={{ fontSize: 11, color: '#6b5344' }}>
+        Facing: {agent.orientation}
+      </div>
+
+      {/* Debug-only: position */}
       {debugMode && (
-        <div
-          style={{
-            marginTop: 8,
-            padding: 8,
-            backgroundColor: '#0f172a',
-            borderRadius: 4,
-            border: '1px solid #334155',
-          }}
-        >
-          <div style={{ fontSize: 10, color: '#fbbf24', fontWeight: 'bold', marginBottom: 4 }}>
-            DEBUG INFO
-          </div>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>
-            Energy: {agent.ep !== undefined ? agent.ep : 'N/A'}
-          </div>
-          {agent.lastAction && (
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-              Last Action: {formatAction(agent.lastAction)}
-            </div>
-          )}
+        <div style={{ fontSize: 11, color: '#6b5344', marginTop: 2 }}>
+          Pos: ({agent.position.x},{agent.position.y})
         </div>
       )}
 
       {eliminated && agent.eliminatedAtRound != null && (
-        <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4, fontWeight: 'bold' }}>
+        <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4, fontWeight: 'bold' }}>
           ELIMINATED (Round {agent.eliminatedAtRound})
         </div>
       )}
