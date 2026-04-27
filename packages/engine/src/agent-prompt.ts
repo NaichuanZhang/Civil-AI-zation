@@ -151,9 +151,35 @@ CRITICAL:
 YOUR IDENTITY:
 ${AGENT_PERSONALITIES[agentId]}
 
-IMPORTANT: Before calling the tool, briefly share your reasoning in the message content (max 50 words). Then call choose_actions with your action sequence.
+RESPONSE FORMAT: You MUST call the choose_actions tool with NO text before it. Do NOT write any analysis, reasoning, or content in your message. Go directly to the tool call. Put brief reasoning (under 50 words) in the tool's "reasoning" field.`;
+}
 
-Choose your actions for this turn. You can perform MULTIPLE actions in sequence until you run out of EP or choose to rest. Plan your sequence carefully based on available EP. Consider: Can I move then attack? Should I reposition first? Am I vulnerable?`;
+export function buildJsonModeInstructions(
+  aliveOpponents: readonly AgentId[],
+  validMoveDirections: readonly Direction[],
+): string {
+  const validActions = [
+    ...validMoveDirections.map(d => `move:${d}`),
+    ...(aliveOpponents.length > 0 ? aliveOpponents.map(t => `attack:${t}`) : []),
+    'turn:up', 'turn:down', 'turn:left', 'turn:right',
+    'rest',
+  ];
+
+  return `CRITICAL: Decide your actions FIRST, then explain briefly. Do NOT over-analyze.
+
+Respond with ONLY a JSON object. No other text.
+
+{"actions": [...], "reasoning": "1 sentence"}
+
+Valid actions: ${JSON.stringify(validActions)}
+
+Examples:
+{"actions": ["move:left"], "reasoning": "Flanking opponent"}
+{"actions": ["move:up", "attack:sonnet"], "reasoning": "Side hit opportunity"}
+{"actions": ["rest"], "reasoning": "Need EP"}
+
+Rules: no repeated action types, attack must be last, rest stops sequence.
+Reasoning must be under 20 words. Focus on WHAT you do, not WHY in detail.`;
 }
 
 export function buildUserMessage(
@@ -283,10 +309,6 @@ Rules:
       parameters: {
         type: 'object',
         properties: {
-          reasoning: {
-            type: 'string',
-            description: 'Your strategic thinking and reasoning about the current situation before choosing actions. Analyze threats, opportunities, and explain your plan.',
-          },
           actions: {
             type: 'array',
             items: {
@@ -303,8 +325,12 @@ Rules:
             },
             description: 'Sequence of actions to perform. Format: "action:param" or "rest". Example: ["move:left", "attack:opus"]',
           },
+          reasoning: {
+            type: 'string',
+            description: 'Brief strategic reasoning (max 50 words).',
+          },
         },
-        required: ['reasoning', 'actions'],
+        required: ['actions'],
       },
     },
   }];
@@ -383,6 +409,45 @@ export function parseToolCall(toolCall: {
     }
   } catch {
     return [{ type: 'rest' }];
+  }
+}
+
+export function parseJsonContent(content: string): { actions: AgentAction[]; reasoning: string } {
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { actions: [{ type: 'rest' }], reasoning: '' };
+
+    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+    const reasoning = typeof parsed['reasoning'] === 'string' ? parsed['reasoning'] : '';
+    const actions = parsed['actions'];
+
+    if (!Array.isArray(actions)) return { actions: [{ type: 'rest' }], reasoning };
+
+    const parsedActions: AgentAction[] = [];
+    for (const actionStr of actions) {
+      if (typeof actionStr !== 'string') continue;
+      if (actionStr === 'rest') {
+        parsedActions.push({ type: 'rest' });
+        break;
+      }
+      const [actionType, param] = actionStr.split(':');
+      if (actionType === 'move') {
+        if (param === 'up' || param === 'down' || param === 'left' || param === 'right') {
+          parsedActions.push({ type: 'move', direction: param });
+        }
+      } else if (actionType === 'attack') {
+        if (param && param in AGENT_PERSONALITIES) {
+          parsedActions.push({ type: 'attack', target: param as AgentId });
+        }
+      } else if (actionType === 'turn') {
+        if (param === 'up' || param === 'down' || param === 'left' || param === 'right') {
+          parsedActions.push({ type: 'turn', direction: param });
+        }
+      }
+    }
+    return { actions: parsedActions.length > 0 ? parsedActions : [{ type: 'rest' }], reasoning };
+  } catch {
+    return { actions: [{ type: 'rest' }], reasoning: '' };
   }
 }
 

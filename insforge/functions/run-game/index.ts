@@ -682,9 +682,33 @@ CRITICAL:
 YOUR IDENTITY:
 ${AGENT_PERSONALITIES[agentId]}
 
-IMPORTANT: Before calling the tool, briefly share your reasoning in the message content (max 50 words). Then call choose_actions with your action sequence.
+RESPONSE FORMAT: You MUST call the choose_actions tool with NO text before it. Do NOT write any analysis, reasoning, or content in your message. Go directly to the tool call. Put brief reasoning (under 50 words) in the tool's "reasoning" field.`;
+}
+function buildJsonModeInstructions(aliveOpponents, validMoveDirections) {
+  const validActions = [
+    ...validMoveDirections.map((d) => `move:${d}`),
+    ...aliveOpponents.length > 0 ? aliveOpponents.map((t) => `attack:${t}`) : [],
+    "turn:up",
+    "turn:down",
+    "turn:left",
+    "turn:right",
+    "rest"
+  ];
+  return `CRITICAL: Decide your actions FIRST, then explain briefly. Do NOT over-analyze.
 
-Choose your actions for this turn. You can perform MULTIPLE actions in sequence until you run out of EP or choose to rest. Plan your sequence carefully based on available EP. Consider: Can I move then attack? Should I reposition first? Am I vulnerable?`;
+Respond with ONLY a JSON object. No other text.
+
+{"actions": [...], "reasoning": "1 sentence"}
+
+Valid actions: ${JSON.stringify(validActions)}
+
+Examples:
+{"actions": ["move:left"], "reasoning": "Flanking opponent"}
+{"actions": ["move:up", "attack:sonnet"], "reasoning": "Side hit opportunity"}
+{"actions": ["rest"], "reasoning": "Need EP"}
+
+Rules: no repeated action types, attack must be last, rest stops sequence.
+Reasoning must be under 20 words. Focus on WHAT you do, not WHY in detail.`;
 }
 function buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections) {
   const grid = buildGridVisual(aliveAgents, sharedView.chests, sharedView.mapWidth, sharedView.mapHeight);
@@ -769,10 +793,6 @@ Rules:
       parameters: {
         type: "object",
         properties: {
-          reasoning: {
-            type: "string",
-            description: "Your strategic thinking and reasoning about the current situation before choosing actions. Analyze threats, opportunities, and explain your plan."
-          },
           actions: {
             type: "array",
             items: {
@@ -788,9 +808,13 @@ Rules:
               ]
             },
             description: 'Sequence of actions to perform. Format: "action:param" or "rest". Example: ["move:left", "attack:opus"]'
+          },
+          reasoning: {
+            type: "string",
+            description: "Brief strategic reasoning (max 50 words)."
           }
         },
-        required: ["reasoning", "actions"]
+        required: ["actions"]
       }
     }
   }];
@@ -857,6 +881,41 @@ function parseToolCall(toolCall) {
     }
   } catch {
     return [{ type: "rest" }];
+  }
+}
+function parseJsonContent(content) {
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { actions: [{ type: "rest" }], reasoning: "" };
+    const parsed = JSON.parse(jsonMatch[0]);
+    const reasoning = typeof parsed["reasoning"] === "string" ? parsed["reasoning"] : "";
+    const actions = parsed["actions"];
+    if (!Array.isArray(actions)) return { actions: [{ type: "rest" }], reasoning };
+    const parsedActions = [];
+    for (const actionStr of actions) {
+      if (typeof actionStr !== "string") continue;
+      if (actionStr === "rest") {
+        parsedActions.push({ type: "rest" });
+        break;
+      }
+      const [actionType, param] = actionStr.split(":");
+      if (actionType === "move") {
+        if (param === "up" || param === "down" || param === "left" || param === "right") {
+          parsedActions.push({ type: "move", direction: param });
+        }
+      } else if (actionType === "attack") {
+        if (param && param in AGENT_PERSONALITIES) {
+          parsedActions.push({ type: "attack", target: param });
+        }
+      } else if (actionType === "turn") {
+        if (param === "up" || param === "down" || param === "left" || param === "right") {
+          parsedActions.push({ type: "turn", direction: param });
+        }
+      }
+    }
+    return { actions: parsedActions.length > 0 ? parsedActions : [{ type: "rest" }], reasoning };
+  } catch {
+    return { actions: [{ type: "rest" }], reasoning: "" };
   }
 }
 function buildGridVisual(agents, chests, width, height) {
@@ -1019,7 +1078,9 @@ async function callLlm(client, params) {
       temperature: params.temperature ?? 0.7,
       max_tokens: params.maxTokens ?? 500
     };
-    if (params.tools?.length) {
+    if (params.responseFormat) {
+      body.response_format = params.responseFormat;
+    } else if (params.tools?.length) {
       body.tools = params.tools;
       body.tool_choice = params.toolChoice ?? "auto";
     }
@@ -1094,10 +1155,9 @@ async function index_src_default(req) {
     return jsonResponse({ error: error.message }, 500);
   }
 }
-var ACTION_ORDER = { move: 0, turn: 1, attack: 2, rest: 3 };
 function parseActionsFromContent(content) {
   const actions = [];
-  const pattern = /\b(move|attack|turn):(up|down|left|right|opus|sonnet|haiku)\b/gi;
+  const pattern = /\b(move|attack|turn|rest):(up|down|left|right|opus|sonnet|haiku)\b/gi;
   let match;
   while ((match = pattern.exec(content)) !== null) {
     const type = match[1].toLowerCase();
@@ -1108,10 +1168,9 @@ function parseActionsFromContent(content) {
       actions.push({ type: "attack", target: param });
     } else if (type === "turn" && ["up", "down", "left", "right"].includes(param)) {
       actions.push({ type: "turn", direction: param });
+    } else if (type === "rest") {
+      actions.push({ type: "rest" });
     }
-  }
-  if (/\brest\b/i.test(content) && actions.length === 0) {
-    actions.push({ type: "rest" });
   }
   if (actions.length > 0) {
     console.log(`[parseActionsFromContent] Extracted ${actions.length} actions from content text`);
@@ -1208,54 +1267,71 @@ async function runGameLoop(client, gameId, initialState, config) {
       let parsedActions = [{ type: "rest" }];
       let rawResponse = null;
       let reasoning = "";
+      const isZaiModel = turnAgent.modelId.startsWith("zai/");
       try {
         const systemPrompt = buildSystemPrompt(turnAgent.agentId);
         const userMessage = buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections);
-        const tools = buildToolDefinitions(aliveOpponents, validMoveDirections);
         const t0 = Date.now();
         const agentMaxTokens = AGENT_CONFIG_MAP[turnAgent.agentId]?.maxTokens ?? 500;
-        const completion = await callLlm(client, {
-          model: turnAgent.modelId,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage }
-          ],
-          tools,
-          toolChoice: "auto",
-          temperature: 0.7,
-          maxTokens: agentMaxTokens
-        });
-        console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId}, ${agentMaxTokens} tokens)`);
-        rawResponse = completion;
-        const message = completion.choices?.[0]?.message;
-        const thinkingReasoning = message?.reasoning_content || "";
-        const toolCalls = message?.tool_calls;
-        if (toolCalls && toolCalls.length > 0) {
-          let toolReasoning = "";
-          try {
-            const toolArgs = JSON.parse(toolCalls[0].function.arguments);
-            toolReasoning = toolArgs.reasoning || "";
-          } catch {
-          }
-          reasoning = thinkingReasoning || toolReasoning || message?.content || "";
-          const merged = [];
-          const seenTypes = /* @__PURE__ */ new Set();
-          for (const tc of toolCalls) {
-            for (const action of parseToolCall(tc)) {
-              if (!seenTypes.has(action.type)) {
-                seenTypes.add(action.type);
-                merged.push(action);
-              }
-            }
-          }
-          parsedActions = merged.length > 0 ? merged : [{ type: "rest" }];
+        if (isZaiModel) {
+          const jsonInstructions = buildJsonModeInstructions(aliveOpponents, validMoveDirections);
+          const completion = await callLlm(client, {
+            model: turnAgent.modelId,
+            messages: [
+              { role: "system", content: systemPrompt + "\n\n" + jsonInstructions },
+              { role: "user", content: userMessage }
+            ],
+            responseFormat: { type: "json_object" },
+            temperature: 0.7,
+            maxTokens: agentMaxTokens
+          });
+          console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId}, json_mode, ${agentMaxTokens} tokens)`);
+          rawResponse = completion;
+          const message = completion.choices?.[0]?.message;
+          const content = message?.content || "";
+          const parsed = parseJsonContent(content);
+          parsedActions = parsed.actions;
+          reasoning = message?.reasoning_content || parsed.reasoning;
         } else {
-          reasoning = thinkingReasoning || message?.content || "";
-          parsedActions = parseActionsFromContent(message?.content || "");
+          const tools = buildToolDefinitions(aliveOpponents, validMoveDirections);
+          const completion = await callLlm(client, {
+            model: turnAgent.modelId,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMessage }
+            ],
+            tools,
+            toolChoice: { type: "function", function: { name: "choose_actions" } },
+            temperature: 0.7,
+            maxTokens: agentMaxTokens
+          });
+          console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId}, ${agentMaxTokens} tokens)`);
+          rawResponse = completion;
+          const message = completion.choices?.[0]?.message;
+          const thinkingReasoning = message?.reasoning_content || "";
+          const toolCalls = message?.tool_calls;
+          if (toolCalls && toolCalls.length > 0) {
+            let toolReasoning = "";
+            try {
+              const toolArgs = JSON.parse(toolCalls[0].function.arguments);
+              toolReasoning = toolArgs.reasoning || "";
+            } catch {
+            }
+            reasoning = thinkingReasoning || toolReasoning || message?.content || "";
+            const merged = [];
+            for (const tc of toolCalls) {
+              merged.push(...parseToolCall(tc));
+            }
+            parsedActions = merged.length > 0 ? merged : [{ type: "rest" }];
+          } else {
+            reasoning = thinkingReasoning || message?.content || "";
+            parsedActions = parseActionsFromContent(message?.content || "");
+          }
         }
       } catch (err) {
         console.error(`LLM call failed for ${turnAgent.agentId}:`, err);
       }
+      const ACTION_ORDER = { move: 0, turn: 1, attack: 2, rest: 3 };
       const orderedActions = [...parsedActions].sort(
         (a, b) => (ACTION_ORDER[a.type] ?? 99) - (ACTION_ORDER[b.type] ?? 99)
       );

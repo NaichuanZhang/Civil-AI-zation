@@ -114,7 +114,9 @@ export {
   buildSystemPrompt,
   buildUserMessage,
   buildToolDefinitions,
+  buildJsonModeInstructions,
   parseToolCall,
+  parseJsonContent,
 } from './agent-prompt.js';
 export type { ToolDefinition } from './agent-prompt.js';
 

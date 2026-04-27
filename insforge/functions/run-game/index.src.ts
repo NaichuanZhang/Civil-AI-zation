@@ -9,7 +9,9 @@ import {
   buildSystemPrompt,
   buildUserMessage,
   buildToolDefinitions,
+  buildJsonModeInstructions,
   parseToolCall,
+  parseJsonContent,
   executeAction,
   getTurnOrder,
   resetEpForTurn,
@@ -65,7 +67,8 @@ async function callLlm(
     model: string;
     messages: Array<{ role: string; content: string }>;
     tools?: readonly ToolDefinition[];
-    toolChoice?: string;
+    toolChoice?: string | Record<string, unknown>;
+    responseFormat?: Record<string, unknown>;
     temperature?: number;
     maxTokens?: number;
   },
@@ -81,7 +84,9 @@ async function callLlm(
       temperature: params.temperature ?? 0.7,
       max_tokens: params.maxTokens ?? 500,
     };
-    if (params.tools?.length) {
+    if (params.responseFormat) {
+      body.response_format = params.responseFormat;
+    } else if (params.tools?.length) {
       body.tools = params.tools;
       body.tool_choice = params.toolChoice ?? 'auto';
     }
@@ -319,49 +324,72 @@ async function runGameLoop(
       let rawResponse: unknown = null;
       let reasoning = '';
 
+      const isZaiModel = turnAgent.modelId.startsWith('zai/');
+
       try {
         const systemPrompt = buildSystemPrompt(turnAgent.agentId);
         const userMessage = buildUserMessage(sharedView, personalView, aliveAgents, validMoveDirections);
-        const tools = buildToolDefinitions(aliveOpponents, validMoveDirections);
 
         const t0 = Date.now();
         const agentMaxTokens = AGENT_CONFIG_MAP[turnAgent.agentId]?.maxTokens ?? 500;
-        const completion = await callLlm(client, {
-          model: turnAgent.modelId,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage },
-          ],
-          tools,
-          toolChoice: 'auto',
-          temperature: 0.7,
-          maxTokens: agentMaxTokens,
-        });
-        console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId}, ${agentMaxTokens} tokens)`);
 
-        rawResponse = completion;
-        const message = completion.choices?.[0]?.message;
-        const thinkingReasoning = message?.reasoning_content || '';
+        if (isZaiModel) {
+          const jsonInstructions = buildJsonModeInstructions(aliveOpponents, validMoveDirections);
+          const completion = await callLlm(client, {
+            model: turnAgent.modelId,
+            messages: [
+              { role: 'system', content: systemPrompt + '\n\n' + jsonInstructions },
+              { role: 'user', content: userMessage },
+            ],
+            responseFormat: { type: 'json_object' },
+            temperature: 0.7,
+            maxTokens: agentMaxTokens,
+          });
+          console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId}, json_mode, ${agentMaxTokens} tokens)`);
 
-        const toolCalls = message?.tool_calls;
-        if (toolCalls && toolCalls.length > 0) {
-          let toolReasoning = '';
-          try {
-            const toolArgs = JSON.parse(toolCalls[0].function.arguments);
-            toolReasoning = toolArgs.reasoning || '';
-          } catch { /* ignore */ }
-          reasoning = thinkingReasoning || toolReasoning || message?.content || '';
-
-          // Merge actions from all tool_calls (some models split into multiple calls)
-          const merged: AgentAction[] = [];
-          for (const tc of toolCalls) {
-            merged.push(...parseToolCall(tc));
-          }
-          parsedActions = merged.length > 0 ? merged : [{ type: 'rest' }];
+          rawResponse = completion;
+          const message = completion.choices?.[0]?.message;
+          const content = message?.content || '';
+          const parsed = parseJsonContent(content);
+          parsedActions = parsed.actions;
+          reasoning = message?.reasoning_content || parsed.reasoning;
         } else {
-          reasoning = thinkingReasoning || message?.content || '';
-          // Fallback: try to extract actions from content text
-          parsedActions = parseActionsFromContent(message?.content || '');
+          const tools = buildToolDefinitions(aliveOpponents, validMoveDirections);
+          const completion = await callLlm(client, {
+            model: turnAgent.modelId,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userMessage },
+            ],
+            tools,
+            toolChoice: { type: 'function', function: { name: 'choose_actions' } },
+            temperature: 0.7,
+            maxTokens: agentMaxTokens,
+          });
+          console.log(`[R${round}][${turnAgent.agentId}] LLM call: ${Date.now() - t0}ms (${turnAgent.modelId}, ${agentMaxTokens} tokens)`);
+
+          rawResponse = completion;
+          const message = completion.choices?.[0]?.message;
+          const thinkingReasoning = message?.reasoning_content || '';
+
+          const toolCalls = message?.tool_calls;
+          if (toolCalls && toolCalls.length > 0) {
+            let toolReasoning = '';
+            try {
+              const toolArgs = JSON.parse(toolCalls[0].function.arguments);
+              toolReasoning = toolArgs.reasoning || '';
+            } catch { /* ignore */ }
+            reasoning = thinkingReasoning || toolReasoning || message?.content || '';
+
+            const merged: AgentAction[] = [];
+            for (const tc of toolCalls) {
+              merged.push(...parseToolCall(tc));
+            }
+            parsedActions = merged.length > 0 ? merged : [{ type: 'rest' }];
+          } else {
+            reasoning = thinkingReasoning || message?.content || '';
+            parsedActions = parseActionsFromContent(message?.content || '');
+          }
         }
       } catch (err) {
         console.error(`LLM call failed for ${turnAgent.agentId}:`, err);
