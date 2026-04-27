@@ -1,5 +1,6 @@
 import type { EventLogEntry, GameUIState } from '../types';
 import type { NarrationItem } from './types';
+import { AGENT_NAMES } from '../config';
 
 let counter = 0;
 function nextId(): string {
@@ -58,7 +59,7 @@ export function generateNarrationForEvent(
       if (!entry.agentId) return null;
       return {
         id: nextId(),
-        text: `${capitalize(entry.agentId)} has been eliminated by ${capitalize(entry.eliminatedBy ?? 'unknown')}!`,
+        text: `${AGENT_NAMES[entry.agentId] ?? capitalize(entry.agentId)} has been eliminated by ${AGENT_NAMES[entry.eliminatedBy ?? ''] ?? capitalize(entry.eliminatedBy ?? 'unknown')}!`,
         priority: 'high',
         useTTS: true,
         source: 'elimination',
@@ -76,7 +77,7 @@ export function generateNarrationForEvent(
 function generateTurnNarration(entry: EventLogEntry): NarrationItem | null {
   if (!entry.agentId || !entry.action) return null;
 
-  const name = capitalize(entry.agentId);
+  const name = AGENT_NAMES[entry.agentId] ?? capitalize(entry.agentId);
   const action = entry.action;
   const result = entry.result;
   let text: string;
@@ -86,7 +87,7 @@ function generateTurnNarration(entry: EventLogEntry): NarrationItem | null {
       text = `${name} moves ${dirName(action.direction)}`;
       break;
     case 'attack': {
-      const target = capitalize(action.target ?? 'unknown');
+      const target = AGENT_NAMES[action.target ?? ''] ?? capitalize(action.target ?? 'unknown');
       const dmg = result?.damage;
       text = dmg
         ? `${name} attacks ${target} for ${dmg} damage`
@@ -121,7 +122,7 @@ export function generateNarrationForGameEnd(
   result: { winner: string | null; type: string },
 ): NarrationItem {
   const text = result.winner
-    ? `${capitalize(result.winner)} claims victory! The battle is over.`
+    ? `${AGENT_NAMES[result.winner] ?? capitalize(result.winner)} claims victory! The battle is over.`
     : 'The battle ends in a draw! No clear winner emerges.';
 
   return {

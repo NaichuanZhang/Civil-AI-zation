@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { EventLogEntry } from '../types';
+import { AGENT_NAMES } from '../config';
+
+const agentName = (id: string) => AGENT_NAMES[id] ?? id;
 
 const AGENT_COLORS: Record<string, string> = {
   opus: '#8b5cf6',
@@ -17,25 +20,25 @@ function formatEntry(entry: EventLogEntry): string {
   }
 
   if (entry.type === 'elimination') {
-    return `${entry.agentId} was eliminated by ${entry.eliminatedBy}!`;
+    return `${agentName(entry.agentId ?? '')} was eliminated by ${agentName(entry.eliminatedBy ?? '')}!`;
   }
 
   const r = entry.result;
-  if (!r) return `${entry.agentId} acted.`;
+  if (!r) return `${agentName(entry.agentId ?? '')} acted.`;
 
   switch (r.type) {
     case 'move':
-      return `${entry.agentId} moved ${r.newOrientation} to (${r.to?.x},${r.to?.y}).`;
+      return `${agentName(entry.agentId ?? '')} moved ${r.newOrientation} to (${r.to?.x},${r.to?.y}).`;
     case 'attack': {
-      const elim = r.targetEliminated ? ` ${r.target} eliminated!` : '';
-      return `${entry.agentId} attacked ${r.target} (${r.hitZone}) for ${r.damage} damage.${elim}`;
+      const elim = r.targetEliminated ? ` ${agentName(r.target ?? '')} eliminated!` : '';
+      return `${agentName(entry.agentId ?? '')} attacked ${agentName(r.target ?? '')} (${r.hitZone}) for ${r.damage} damage.${elim}`;
     }
     case 'rest':
-      return `${entry.agentId} rested.`;
+      return `${agentName(entry.agentId ?? '')} rested.`;
     case 'invalid':
-      return `${entry.agentId} attempted invalid action, rested instead.`;
+      return `${agentName(entry.agentId ?? '')} attempted invalid action, rested instead.`;
     default:
-      return `${entry.agentId} acted.`;
+      return `${agentName(entry.agentId ?? '')} acted.`;
   }
 }
 

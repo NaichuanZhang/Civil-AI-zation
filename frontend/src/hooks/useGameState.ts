@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { insforge } from '../insforge';
 import { useLog } from '../contexts/LogContext';
+import { AGENT_NAMES } from '../config';
 import type { GameUIState, EventLogEntry } from '../types';
+
+const agentName = (id: string) => AGENT_NAMES[id] ?? id;
 
 const INITIAL_STATE: GameUIState = {
   gameId: null,
@@ -130,7 +133,7 @@ export function useGameState() {
               type: 'turn',
               round: s.round,
               agentId,
-              text: `${agentId} is thinking...`,
+              text: `${agentName(agentId)} is thinking...`,
             } as EventLogEntry,
           ],
         }));
@@ -194,9 +197,9 @@ export function useGameState() {
             const res = results[i];
 
             // Build readable text for system log
-            let actionText = `${agentId}`;
+            let actionText = `${agentName(agentId)}`;
             if (act?.type === 'move') actionText += ` moved ${act.direction}`;
-            else if (act?.type === 'attack') actionText += ` attacked ${act.target}`;
+            else if (act?.type === 'attack') actionText += ` attacked ${agentName(act.target ?? '')}`;
             else if (act?.type === 'turn') actionText += ` turned ${act.direction}`;
             else if (act?.type === 'rest') actionText += ` rested`;
             else if (act?.type === 'invalid') actionText += ` invalid action`;
@@ -227,7 +230,7 @@ export function useGameState() {
               newEntries.push({
                 type: 'summary',
                 round: s.round,
-                text: `[R${s.round}] ${emoji} ${agentId} opened a chest: ${effect} (${sign}${chestData.item.hpChange} HP) → HP ${chestData.hpBefore} → ${chestData.hpAfter}`,
+                text: `[R${s.round}] ${emoji} ${agentName(agentId)} opened a chest: ${effect} (${sign}${chestData.item.hpChange} HP) → HP ${chestData.hpBefore} → ${chestData.hpAfter}`,
               });
             }
           }
