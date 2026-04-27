@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Bug, Circle, Play, Pause, SkipForward } from 'lucide-react';
 import { useLog } from '../contexts/LogContext';
 import { AGENT_NAMES } from '../config';
+import dashboardBgUrl from '@assets/dashboard-bg.png';
 
 type LogType = 'system' | 'opus' | 'sonnet' | 'haiku';
 
@@ -80,12 +81,18 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
 
   const filteredLogs = getFilteredLogs();
 
+  const parchmentBorder = '1px solid rgba(68, 55, 40, 0.28)';
+
   return (
     <div
       style={{
-        border: '1px solid #334155',
-        borderRadius: 8,
-        backgroundColor: '#0f172a',
+        border: parchmentBorder,
+        borderRadius: 10,
+        backgroundColor: '#ebe4d8',
+        backgroundImage: `url(${dashboardBgUrl})`,
+        backgroundSize: '100% auto',
+        backgroundPosition: 'top center',
+        backgroundRepeat: 'no-repeat',
         overflow: 'hidden',
       }}
     >
@@ -94,8 +101,9 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          backgroundColor: '#1e293b',
-          borderBottom: '1px solid #334155',
+          backgroundColor: 'rgba(255, 252, 245, 0.35)',
+          backdropFilter: 'blur(2px)',
+          borderBottom: parchmentBorder,
         }}
       >
         {/* Tabs */}
@@ -114,10 +122,10 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
                   gap: 6,
                   padding: '8px 12px',
                   cursor: 'pointer',
-                  backgroundColor: isActive ? '#0f172a' : 'transparent',
-                  borderRight: '1px solid #334155',
-                  borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
-                  color: isActive ? '#f1f5f9' : '#94a3b8',
+                  backgroundColor: isActive ? 'rgba(255, 255, 255, 0.45)' : 'transparent',
+                  borderRight: '1px solid rgba(68, 55, 40, 0.15)',
+                  borderBottom: isActive ? '2px solid #b45309' : '2px solid transparent',
+                  color: isActive ? '#1c1917' : '#57534e',
                   fontSize: 12,
                   fontWeight: isActive ? '600' : 'normal',
                   transition: 'all 0.15s',
@@ -125,14 +133,14 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
-                    e.currentTarget.style.backgroundColor = '#334155';
-                    e.currentTarget.style.color = '#e2e8f0';
+                    e.currentTarget.style.backgroundColor = 'rgba(68, 55, 40, 0.08)';
+                    e.currentTarget.style.color = '#292524';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) {
                     e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = '#94a3b8';
+                    e.currentTarget.style.color = '#57534e';
                   }
                 }}
               >
@@ -151,7 +159,7 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
                   }}
                   title={isEnabled ? 'Logging enabled' : 'Logging disabled'}
                 >
-                  <Bug size={14} color={isEnabled ? '#22c55e' : '#64748b'} />
+                  <Bug size={14} color={isEnabled ? '#15803d' : '#a8a29e'} />
                 </button>
                 <span>{tab.label}</span>
               </div>
@@ -165,7 +173,7 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
             display: 'flex',
             gap: 8,
             padding: '4px 12px',
-            borderLeft: '1px solid #334155',
+            borderLeft: '1px solid rgba(68, 55, 40, 0.15)',
           }}
         >
           {!replayMode && (
@@ -176,10 +184,10 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
                 alignItems: 'center',
                 gap: 4,
                 padding: '4px 8px',
-                border: '1px solid #334155',
+                border: '1px solid rgba(68, 55, 40, 0.25)',
                 borderRadius: 4,
-                backgroundColor: recordMode ? '#ef4444' : '#1e293b',
-                color: '#e2e8f0',
+                backgroundColor: recordMode ? '#ef4444' : 'rgba(255, 255, 255, 0.55)',
+                color: recordMode ? '#fff' : '#44403c',
                 fontSize: 11,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
@@ -200,10 +208,10 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
                   alignItems: 'center',
                   gap: 4,
                   padding: '4px 8px',
-                  border: '1px solid #334155',
+                  border: '1px solid rgba(68, 55, 40, 0.25)',
                   borderRadius: 4,
-                  backgroundColor: replayMode ? '#3b82f6' : '#1e293b',
-                  color: '#e2e8f0',
+                  backgroundColor: replayMode ? '#2563eb' : 'rgba(255, 255, 255, 0.55)',
+                  color: replayMode ? '#fff' : '#44403c',
                   fontSize: 11,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
@@ -222,10 +230,10 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
                     alignItems: 'center',
                     gap: 4,
                     padding: '4px 8px',
-                    border: '1px solid #334155',
+                    border: '1px solid rgba(68, 55, 40, 0.25)',
                     borderRadius: 4,
-                    backgroundColor: '#1e293b',
-                    color: replayStep >= recordedLogs.length - 1 ? '#64748b' : '#e2e8f0',
+                    backgroundColor: 'rgba(255, 255, 255, 0.55)',
+                    color: replayStep >= recordedLogs.length - 1 ? '#a8a29e' : '#44403c',
                     fontSize: 11,
                     cursor: replayStep >= recordedLogs.length - 1 ? 'not-allowed' : 'pointer',
                     transition: 'all 0.2s',
@@ -249,10 +257,11 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
           fontSize: 12,
           lineHeight: 1.6,
           fontFamily: 'monospace',
+          backgroundColor: 'transparent',
         }}
       >
         {filteredLogs.length === 0 && (
-          <div style={{ color: '#475569' }}>
+          <div style={{ color: '#57534e' }}>
             {replayMode
               ? 'No replay data'
               : enabledAgents.has(activeTab)
@@ -264,12 +273,12 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
         {filteredLogs.map((log, i) => {
           const categoryColor =
             log.category === 'prompt'
-              ? '#3b82f6'
+              ? '#2563eb'
               : log.category === 'action'
-                ? '#8b5cf6'
+                ? '#7c3aed'
                 : log.category === 'result'
-                  ? '#22c55e'
-                  : '#94a3b8';
+                  ? '#15803d'
+                  : '#78716c';
 
           return (
             <div
@@ -277,11 +286,11 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
               style={{
                 marginBottom: 8,
                 paddingBottom: 8,
-                borderBottom: '1px solid #1e293b',
+                borderBottom: '1px solid rgba(68, 55, 40, 0.15)',
               }}
             >
               <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                <span style={{ color: '#64748b', fontSize: 10 }}>
+                <span style={{ color: '#78716c', fontSize: 10 }}>
                   {new Date(log.timestamp).toLocaleTimeString()}
                 </span>
                 <span
@@ -295,12 +304,12 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
                   {log.category}
                 </span>
               </div>
-              <div style={{ color: '#e2e8f0', whiteSpace: 'pre-wrap' }}>{log.message}</div>
+              <div style={{ color: '#292524', whiteSpace: 'pre-wrap' }}>{log.message}</div>
               {log.data != null ? (
                 <details style={{ marginTop: 4 }}>
                   <summary
                     style={{
-                      color: '#64748b',
+                      color: '#78716c',
                       fontSize: 10,
                       cursor: 'pointer',
                       userSelect: 'none',
@@ -312,10 +321,10 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
                     style={{
                       marginTop: 4,
                       padding: 8,
-                      backgroundColor: '#1e293b',
+                      backgroundColor: 'rgba(15, 23, 42, 0.08)',
                       borderRadius: 4,
                       fontSize: 10,
-                      color: '#94a3b8',
+                      color: '#44403c',
                       overflow: 'auto',
                     }}
                     dangerouslySetInnerHTML={{

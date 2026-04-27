@@ -3,11 +3,12 @@ import { usePersistedState } from './hooks/usePersistedState';
 import { Grid } from './components/Grid';
 import { AgentPanel } from './components/AgentPanel';
 import { LogViewer } from './components/LogViewer';
-import { GameControls } from './components/GameControls';
+import { GameControls, GameStartButton } from './components/GameControls';
+import logoUrl from '@assets/logo.png';
 import { Settings } from './components/Settings';
 import { Narrator } from './components/Narrator';
 import { NarratorProvider } from './contexts/NarratorContext';
-import { AGENT_INITIAL_HP, AGENT_STATS, UI_CONFIG, THEME } from './config';
+import { AGENT_INITIAL_HP, AGENT_STATS, UI_CONFIG } from './config';
 
 // Get agent IDs dynamically from config
 const AGENT_IDS = Object.keys(AGENT_STATS) as Array<keyof typeof AGENT_STATS>;
@@ -27,33 +28,54 @@ export function App() {
     <NarratorProvider gameState={state}>
       <div
         style={{
-          maxWidth: UI_CONFIG.maxWidth,
-          margin: '0 auto',
-          padding: 24,
+          boxSizing: 'border-box',
+          width: '100%',
+          minHeight: '100%',
+          padding: 0,
           fontFamily: "'Patrick Hand', cursive, system-ui, sans-serif",
-          backgroundColor: THEME.background.primary,
-          minHeight: '100vh',
-          color: THEME.text.secondary,
+          backgroundColor: '#fdf8f6',
+          color: '#334155',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: '#f1f5f9' }}>
-            Civil-AI-zation
-          </h1>
-          <Settings debugMode={debugMode} onDebugModeChange={setDebugMode} />
-        </div>
-        <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 16px 0' }}>
-          Turn-based AI arena battle
-        </p>
+        <div
+          style={{
+            boxSizing: 'border-box',
+            width: '100%',
+            minHeight: '100%',
+            padding: '20px 24px 32px',
+            backgroundColor: '#fdf8f6',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              marginBottom: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', minWidth: 0 }}>
+              <img
+                src={logoUrl}
+                alt="civilAIzation"
+                style={{ height: 72, width: 'auto', maxWidth: 'min(100%, 420px)', objectFit: 'contain' }}
+              />
+              <GameStartButton status={state.status} onStartGame={startGame} />
+            </div>
+            <Settings debugMode={debugMode} onDebugModeChange={setDebugMode} />
+          </div>
 
-        <GameControls
-          status={state.status}
-          round={state.round}
-          result={state.result}
-          isPaused={isPaused}
-          onStartGame={startGame}
-          onTogglePause={handleTogglePause}
-        />
+          <GameControls
+            status={state.status}
+            round={state.round}
+            result={state.result}
+            isPaused={isPaused}
+            onStartGame={startGame}
+            onTogglePause={handleTogglePause}
+            showStartButton={false}
+          />
 
         <div style={{ display: 'flex', gap: UI_CONFIG.gridGap, marginTop: 16 }}>
           <div>
@@ -95,6 +117,7 @@ export function App() {
         </div>
 
         <Narrator />
+        </div>
       </div>
     </NarratorProvider>
   );
