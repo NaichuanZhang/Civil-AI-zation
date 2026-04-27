@@ -2,42 +2,71 @@
 
 **[Live Demo](https://ayyn5caf.insforge.site)** | **[Explainer](https://ayyn5caf.insforge.site/explain)**
 
-Turn-based AI arena battle game where three LLM agents compete on a 5x5 grid. Fully automated — spectators watch via a React UI with realtime events and AI narrator.
+Turn-based AI arena battle game where three LLM agents compete on a 5x5 grid. Fully automated — spectators watch via a React UI with realtime events and an AI narrator.
 
-## Core Systems
+## How It Works
 
-### Turn & Action System
+Three AI agents are dropped onto a 5x5 battlefield. Each agent is powered by a different LLM and has its own personality, stats, and strategy. No human input — every decision is made by the model. You watch the battle unfold in real time through a spectator UI, with a narrator providing commentary.
 
-Each round, agents act in speed order (highest first). Four actions are available: **move**, **attack**, **turn**, and **rest**. EP costs and bonuses are defined in `ACTION_COSTS` in `packages/engine/src/game-config.ts`. Invalid actions automatically fall back to rest.
+Hit **Start** on the [live demo](https://ayyn5caf.insforge.site) and watch them fight, or open the [explainer](https://ayyn5caf.insforge.site/explain) to spectate a game in progress with full narration.
 
-### Combat System
+## The Agents
 
-Attacks hit the cell directly in front of the attacker. Damage depends on where the hit lands relative to the target's facing direction (front, side, or back). Hit zone detection is in `packages/engine/src/orientation.ts`; damage modifiers are in `HIT_ZONE_MODIFIERS` in `packages/engine/src/game-config.ts`. Agents reaching 0 HP are eliminated.
+| Agent | Model | HP | Speed | Personality |
+|-------|-------|----|-------|-------------|
+| **Opus** | GLM-5 Turbo | 30 | 4 | Strategic and patient — thinks ahead, values positioning, prefers advantageous angles |
+| **Sonnet** | GPT-4o Mini | 20 | 3 | Balanced and adaptive — assesses pragmatically, adjusts strategy to the board state |
+| **Haiku** | GPT-4o Mini | 15 | 2 | Aggressive and impulsive — closes distance fast, attacks whenever possible |
 
-### Memory System
+Higher speed means you act first each round. Higher HP means you survive longer but move slower. Each agent gets a system prompt with its personality, plus a rolling memory of the last 10 events to inform decisions.
 
-Each agent maintains a rolling memory of recent events (capped at `memoryCap` in `packages/engine/src/game-config.ts`). Memory includes both the agent's own actions and incoming attacks from opponents. This context is fed to the LLM each turn for tactical decision-making.
+## Game Rules
 
-### Win Conditions
+### Actions
+
+Each turn, an agent picks one action. Every action except rest costs 1 EP (energy point). Agents start each round with 1 EP and can bank up to 3.
+
+| Action | EP Cost | Effect |
+|--------|---------|--------|
+| **Move** | 1 | Move one cell in any direction (also turns to face that direction) |
+| **Attack** | 1 | Strike the cell directly in front of you |
+| **Turn** | 1 | Rotate to face a different direction without moving |
+| **Rest** | 0 | Do nothing, recover 1 EP |
+
+If an agent picks an invalid action (moving off the grid, attacking empty space, etc.), it automatically rests instead.
+
+### Combat
+
+Base attack damage is **5 HP**. Actual damage depends on where you hit the target relative to which way they're facing:
+
+| Hit Zone | Multiplier | Damage |
+|----------|------------|--------|
+| **Front** (target is facing you) | 0.5x | 2 |
+| **Side** (flanking) | 1.0x | 5 |
+| **Back** (backstab) | 1.5x | 7 |
+
+Positioning and facing matter. Turning your back to an opponent is dangerous.
+
+### Treasure Chests
+
+Chests spawn on the board at rounds 2, 7, 12, 17, 22, and 27 (max 2 on the board at once). Walking onto a chest opens it — you get either **+5 HP** (boost) or **-5 HP** (drain). Risk/reward.
+
+### Winning
 
 - **Elimination**: Last agent standing wins immediately
-- **Highest HP**: At `maxRounds`, the agent with the most HP wins
-- **Draw**: If HP is tied at max rounds, or all agents are eliminated simultaneously
-
-Round limit and other game constants are in `DEFAULT_GAME_CONFIG` in `packages/engine/src/game-config.ts`.
-
-### Agents
-
-Three agents (opus, sonnet, haiku) with different speed/HP tradeoffs. Per-agent stats, models, and starting positions are in `AGENT_CONFIG_MAP` in `packages/engine/src/game-config.ts`. All agents use OpenAI-compatible tool-use (function calling) for decision-making.
+- **Highest HP**: After 30 rounds, the agent with the most HP wins
+- **Draw**: Tied HP at round 30, or all agents eliminated simultaneously
 
 ## Architecture
 
 ```
-packages/engine/   Pure game logic library — state in, new state out, zero I/O
-frontend/          React + Vite spectator UI with realtime event subscriptions
-insforge/functions/ Deno edge functions (run-game loop, spectate query)
-migrations/        SQL schema files
+packages/engine/    Pure game logic — state in, new state out, zero I/O
+frontend/           React + Vite spectator UI with realtime subscriptions
+insforge/functions/ Deno edge functions (run-game loop, spectate, narrator)
+migrations/         SQL schema files
 ```
+
+The engine is a pure function library with no side effects. The edge function creates a game in the database, returns a game ID, then runs the game loop in the background — broadcasting events over realtime channels. The frontend subscribes and renders.
 
 ## Development
 
@@ -45,4 +74,5 @@ migrations/        SQL schema files
 pnpm dev              # Frontend at localhost:5173
 pnpm test             # Engine tests
 pnpm build:edge       # Bundle engine into edge function (required before deploy)
+pnpm deploy:functions # Deploy edge functions
 ```
