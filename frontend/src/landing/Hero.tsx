@@ -4,9 +4,9 @@ import gptLogoUrl from '@assets/logo/gpt.png';
 import claudeLogoUrl from '@assets/logo/claude.png';
 
 const CONTESTANTS = [
-  { name: 'GLM-5 Turbo', logo: glmLogoUrl, color: '#8b5cf6' },
-  { name: 'GPT-4o Mini', logo: gptLogoUrl, color: '#3b82f6' },
-  { name: 'Claude Haiku', logo: claudeLogoUrl, color: '#22c55e' },
+  { name: 'GLM-5 Turbo', logo: glmLogoUrl, color: '#3b82f6' },
+  { name: 'GPT-4o Mini', logo: gptLogoUrl, color: '#22c55e' },
+  { name: 'Claude Haiku', logo: claudeLogoUrl, color: '#f97316' },
 ];
 
 export function Hero() {
@@ -24,17 +24,13 @@ export function Hero() {
 
       <div className="flex items-center gap-8 mt-10 animate-[fade-rise_0.8s_ease-out_0.6s_both]">
         {CONTESTANTS.map((c) => (
-          <div key={c.name} className="flex flex-col items-center gap-2">
-            <img
-              src={c.logo}
-              alt={c.name}
-              className="w-14 h-14 rounded-full object-cover"
-              style={{ border: `3px solid ${c.color}`, backgroundColor: 'rgba(255,255,255,0.1)' }}
-            />
-            <span className="text-xs font-semibold" style={{ color: c.color }}>
-              {c.name}
-            </span>
-          </div>
+          <img
+            key={c.name}
+            src={c.logo}
+            alt={c.name}
+            className="w-14 h-14 rounded-full object-cover"
+            style={{ border: `3px solid ${c.color}`, backgroundColor: 'rgba(255,255,255,0.1)', opacity: 0.5 }}
+          />
         ))}
       </div>
     </section>

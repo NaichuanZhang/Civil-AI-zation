@@ -30,9 +30,9 @@ export const AGENT_INITIAL_HP = Object.fromEntries(
  * Agent Visual Configuration
  */
 export const AGENT_COLORS: Record<string, string> = {
-  opus: '#8b5cf6',    // Purple
-  sonnet: '#3b82f6',  // Blue
-  haiku: '#22c55e',   // Green
+  opus: '#3b82f6',    // Blue (GLM)
+  sonnet: '#22c55e',  // Green (GPT)
+  haiku: '#f97316',   // Orange (Claude)
 } as const;
 
 export const AGENT_NAMES: Record<string, string> = {

@@ -1,14 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { EventLogEntry } from '../types';
-import { AGENT_NAMES } from '../config';
+import { AGENT_NAMES, AGENT_COLORS } from '../config';
 
 const agentName = (id: string) => AGENT_NAMES[id] ?? id;
-
-const AGENT_COLORS: Record<string, string> = {
-  opus: '#8b5cf6',
-  sonnet: '#3b82f6',
-  haiku: '#22c55e',
-};
 
 interface EventLogProps {
   entries: EventLogEntry[];

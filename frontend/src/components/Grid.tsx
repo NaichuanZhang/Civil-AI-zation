@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import type { AgentUIState, ChestUIState } from '../types';
-import { AGENT_NAMES } from '../config';
+import { AGENT_NAMES, AGENT_COLORS } from '../config';
 import mapUrl from '@assets/map.png';
 
 import glmBack from '@assets/figure/glm/glm-backview_256.png';
@@ -20,12 +20,6 @@ const AGENT_FIGURES: Record<string, Record<string, string>> = {
   opus: { up: glmBack, down: glmFront, left: glmLeft, right: glmRight },
   sonnet: { up: gptBack, down: gptFront, left: gptLeft, right: gptRight },
   haiku: { up: claudeBack, down: claudeFront, left: claudeLeft, right: claudeRight },
-};
-
-const AGENT_COLORS: Record<string, string> = {
-  opus: '#3b82f6',
-  sonnet: '#22c55e',
-  haiku: '#f97316',
 };
 
 /**
