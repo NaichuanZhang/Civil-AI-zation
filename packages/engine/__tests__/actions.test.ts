@@ -120,7 +120,7 @@ describe('validateAttack', () => {
       makeAgent({ agentId: 'sonnet', position: { x: 1, y: 0 } }),
       makeAgent({ agentId: 'haiku', position: { x: 0, y: 0 } }),
     ];
-    const result = validateAttack(agents[0]!, 'opus', agents);
+    const result = validateAttack(agents[0]!, 'opus', agents, config);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('self');
   });
@@ -140,20 +140,20 @@ describe('validateAttack', () => {
 describe('validateTurn', () => {
   it('accepts turn for alive agent with EP', () => {
     const agent = makeAgent({ agentId: 'opus', position: { x: 0, y: 0 } });
-    const result = validateTurn(agent);
+    const result = validateTurn(agent, config);
     expect(result.valid).toBe(true);
   });
 
   it('rejects turn when no EP', () => {
     const agent = makeAgent({ agentId: 'opus', position: { x: 0, y: 0 }, ep: 0 });
-    const result = validateTurn(agent);
+    const result = validateTurn(agent, config);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain('EP');
   });
 
   it('rejects turn for eliminated agent', () => {
     const agent = makeAgent({ agentId: 'opus', position: { x: 0, y: 0 }, status: 'eliminated' });
-    const result = validateTurn(agent);
+    const result = validateTurn(agent, config);
     expect(result.valid).toBe(false);
   });
 });

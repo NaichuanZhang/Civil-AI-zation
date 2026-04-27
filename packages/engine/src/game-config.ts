@@ -63,7 +63,7 @@ export const AGENT_CONFIG_MAP = {
     maxTokens: 500,
   },
   haiku: {
-    modelId: 'anthropic/claude-haiku-4.5',
+    modelId: 'openai/gpt-4o-mini',
     speed: 4,
     hp: 15,
     startPosition: { x: 1, y: 0 },
@@ -147,5 +147,5 @@ export const AGENT_COLORS = {
 export const AGENT_MODELS = {
   opus: 'GLM-5 Turbo',
   sonnet: 'GPT-4o Mini',
-  haiku: 'Claude Haiku 4.5',
+  haiku: 'GPT-4o Mini',
 } as const;
