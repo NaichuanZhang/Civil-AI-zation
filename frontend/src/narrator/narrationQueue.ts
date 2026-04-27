@@ -30,13 +30,13 @@ export function createNarrationQueue() {
 
   function dequeue(): NarrationItem | null {
     if (items.length === 0) return null;
-    const [head, ...rest] = items;
-    items = rest;
-    return head;
+    const head = items[0];
+    items = items.slice(1);
+    return head ?? null;
   }
 
   function peek(): NarrationItem | null {
-    return items.length > 0 ? items[0] : null;
+    return items.length > 0 ? (items[0] ?? null) : null;
   }
 
   function clear(): void {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Settings as SettingsIcon, X } from 'lucide-react';
+import dashboardBgUrl from '@assets/dashboard-bg.png';
 
 interface SettingsProps {
   debugMode: boolean;
@@ -18,22 +19,24 @@ export function Settings({ debugMode, onDebugModeChange }: SettingsProps) {
           width: 32,
           height: 32,
           borderRadius: '50%',
-          border: '2px solid #334155',
-          backgroundColor: '#1e293b',
-          color: '#e2e8f0',
+          border: 'none',
+          backgroundColor: 'transparent',
+          backgroundImage: `url(${dashboardBgUrl})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          color: '#1c1917',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: 'all 0.2s',
+          transition: 'filter 0.2s, box-shadow 0.2s',
+          boxShadow: 'inset 0 0 0 1px rgba(68, 55, 40, 0.2)',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = '#334155';
-          e.currentTarget.style.borderColor = '#475569';
+          e.currentTarget.style.filter = 'brightness(1.08)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = '#1e293b';
-          e.currentTarget.style.borderColor = '#334155';
+          e.currentTarget.style.filter = '';
         }}
         title="Settings"
       >

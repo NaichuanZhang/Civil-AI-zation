@@ -94,6 +94,10 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
         backgroundPosition: 'top center',
         backgroundRepeat: 'no-repeat',
         overflow: 'hidden',
+        height: '100%',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {/* Tabs Header */}
@@ -101,6 +105,7 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
         style={{
           display: 'flex',
           alignItems: 'center',
+          flexShrink: 0,
           backgroundColor: 'rgba(255, 252, 245, 0.35)',
           backdropFilter: 'blur(2px)',
           borderBottom: parchmentBorder,
@@ -251,7 +256,8 @@ export function LogViewer({ systemLogs, debugMode }: LogViewerProps) {
       {/* Log Content */}
       <div
         style={{
-          height: 240,
+          flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           padding: 12,
           fontSize: 12,

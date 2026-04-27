@@ -34,7 +34,7 @@ export function GameStartButton({ status, onStartGame }: GameStartButtonProps) {
         backgroundSize: 'auto 100%',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        border: isCompleted ? '2px solid #15803d' : '1px solid rgba(68, 55, 40, 0.35)',
+        border: 'none',
         color: isCompleted ? '#14532d' : '#292524',
         opacity: isDisabled ? 0.55 : 1,
         boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.35)',
@@ -80,7 +80,8 @@ export function GameControls({
         display: 'flex',
         alignItems: 'center',
         gap: 16,
-        padding: '12px 0',
+        padding: 0,
+        margin: 0,
         flexWrap: 'wrap',
       }}
     >

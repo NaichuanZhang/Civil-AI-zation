@@ -8,9 +8,8 @@ import logoUrl from '@assets/logo.png';
 import { Settings } from './components/Settings';
 import { Narrator } from './components/Narrator';
 import { NarratorProvider } from './contexts/NarratorContext';
-import { AGENT_INITIAL_HP, AGENT_STATS, UI_CONFIG } from './config';
+import { AGENT_INITIAL_HP, AGENT_STATS } from './config';
 
-// Get agent IDs dynamically from config
 const AGENT_IDS = Object.keys(AGENT_STATS) as Array<keyof typeof AGENT_STATS>;
 
 export function App() {
@@ -20,9 +19,39 @@ export function App() {
 
   const handleTogglePause = () => {
     setIsPaused(!isPaused);
-    // TODO: Implement actual pause logic in backend
     console.log(isPaused ? 'Resuming game...' : 'Pausing game...');
   };
+
+  const agentPanels =
+    state.agents.length > 0
+      ? state.agents.map((agent) => (
+          <div key={agent.agentId} style={{ width: '100%', minWidth: 0 }}>
+            <AgentPanel
+              agent={agent}
+              isCurrentTurn={agent.agentId === state.currentTurnAgent}
+              maxHp={AGENT_INITIAL_HP[agent.agentId as keyof typeof AGENT_INITIAL_HP] ?? 20}
+              debugMode={debugMode}
+            />
+          </div>
+        ))
+      : AGENT_IDS.map((id) => (
+          <div key={id} style={{ width: '100%', minWidth: 0 }}>
+            <AgentPanel
+              agent={{
+                agentId: id,
+                position: { x: 0, y: 0 },
+                hp: AGENT_STATS[id].hp,
+                orientation: 'N',
+                status: 'alive',
+                speed: AGENT_STATS[id].speed,
+                eliminatedAtRound: null,
+              }}
+              isCurrentTurn={false}
+              maxHp={AGENT_STATS[id].hp}
+              debugMode={debugMode}
+            />
+          </div>
+        ));
 
   return (
     <NarratorProvider gameState={state}>
@@ -30,8 +59,12 @@ export function App() {
         style={{
           boxSizing: 'border-box',
           width: '100%',
-          minHeight: '100%',
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
           padding: 0,
+          margin: 0,
           fontFamily: "'Patrick Hand', cursive, system-ui, sans-serif",
           backgroundColor: '#fdf8f6',
           color: '#334155',
@@ -41,8 +74,13 @@ export function App() {
           style={{
             boxSizing: 'border-box',
             width: '100%',
-            minHeight: '100%',
-            padding: '20px 24px 32px',
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0,
+            padding: '0 16px 16px',
+            margin: 0,
             backgroundColor: '#fdf8f6',
           }}
         >
@@ -52,11 +90,23 @@ export function App() {
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 16,
-              marginBottom: 8,
               flexWrap: 'wrap',
+              flexShrink: 0,
+              margin: 0,
+              padding: 0,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', minWidth: 0 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                flexWrap: 'wrap',
+                minWidth: 0,
+                margin: 0,
+                padding: 0,
+              }}
+            >
               <img
                 src={logoUrl}
                 alt="civilAIzation"
@@ -67,56 +117,82 @@ export function App() {
             <Settings debugMode={debugMode} onDebugModeChange={setDebugMode} />
           </div>
 
-          <GameControls
-            status={state.status}
-            round={state.round}
-            result={state.result}
-            isPaused={isPaused}
-            onStartGame={startGame}
-            onTogglePause={handleTogglePause}
-            showStartButton={false}
-          />
-
-        <div style={{ display: 'flex', gap: UI_CONFIG.gridGap, marginTop: 16 }}>
-          <div>
-            <Grid agents={state.agents} chests={state.chests} currentTurnAgent={state.currentTurnAgent} />
+          <div style={{ flexShrink: 0, margin: 0, padding: 0 }}>
+            <GameControls
+              status={state.status}
+              round={state.round}
+              result={state.result}
+              isPaused={isPaused}
+              onStartGame={startGame}
+              onTogglePause={handleTogglePause}
+              showStartButton={false}
+            />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-            {state.agents.length > 0
-              ? state.agents.map((agent) => (
-                  <AgentPanel
-                    key={agent.agentId}
-                    agent={agent}
-                    isCurrentTurn={agent.agentId === state.currentTurnAgent}
-                    maxHp={AGENT_INITIAL_HP[agent.agentId as keyof typeof AGENT_INITIAL_HP] ?? 20}
-                    debugMode={debugMode}
-                  />
-                ))
-              : AGENT_IDS.map((id) => (
-                  <AgentPanel
-                    key={id}
-                    agent={{
-                      agentId: id,
-                      position: { x: 0, y: 0 },
-                      hp: AGENT_STATS[id].hp,
-                      orientation: 'N',
-                      status: 'alive',
-                      speed: AGENT_STATS[id].speed,
-                      eliminatedAtRound: null,
-                    }}
-                    isCurrentTurn={false}
-                    maxHp={AGENT_STATS[id].hp}
-                    debugMode={debugMode}
-                  />
-                ))}
+
+          <div
+            style={{
+              flex: 4,
+              minHeight: 0,
+              width: '100%',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              margin: 0,
+              padding: 0,
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                minWidth: 0,
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: 0,
+                padding: 0,
+              }}
+            >
+              <Grid agents={state.agents} chests={state.chests} currentTurnAgent={state.currentTurnAgent} />
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                right: 8,
+                bottom: 8,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                alignItems: 'stretch',
+                width: 'min(320px, 42%)',
+                maxHeight: 'min(90%, calc(100% - 16px))',
+                overflowY: 'auto',
+                zIndex: 2,
+                pointerEvents: 'auto',
+                margin: 0,
+                padding: 0,
+              }}
+            >
+              {agentPanels}
+            </div>
           </div>
-        </div>
 
-        <div style={{ marginTop: 16 }}>
-          <LogViewer systemLogs={state.eventLog} debugMode={debugMode} />
-        </div>
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              marginTop: 8,
+              marginBottom: 0,
+              padding: 0,
+            }}
+          >
+            <LogViewer systemLogs={state.eventLog} debugMode={debugMode} />
+          </div>
 
-        <Narrator />
+          <Narrator />
         </div>
       </div>
     </NarratorProvider>
