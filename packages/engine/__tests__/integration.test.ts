@@ -84,9 +84,9 @@ describe('Integration: Full game simulation', () => {
       const alive = state.agents.filter((a) => a.status === 'alive');
       alive.forEach((a) => {
         expect(a.position.x).toBeGreaterThanOrEqual(0);
-        expect(a.position.x).toBeLessThan(3);
+        expect(a.position.x).toBeLessThan(5);
         expect(a.position.y).toBeGreaterThanOrEqual(0);
-        expect(a.position.y).toBeLessThan(3);
+        expect(a.position.y).toBeLessThan(5);
       });
 
       for (let j = 0; j < alive.length; j++) {
@@ -251,6 +251,8 @@ describe('Integration: Full game simulation', () => {
     // Simpler approach: just use 2 agents
     const config4 = {
       ...DEFAULT_GAME_CONFIG,
+      mapWidth: 3,
+      mapHeight: 3,
       agents: [
         { agentId: 'opus' as const, modelId: 'test', speed: 1, hp: 2, position: { x: 2, y: 2 }, orientation: 'up' as const },
         { agentId: 'sonnet' as const, modelId: 'test', speed: 3, hp: 100, position: { x: 2, y: 1 }, orientation: 'down' as const },

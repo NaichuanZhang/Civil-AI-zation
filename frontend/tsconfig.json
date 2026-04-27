@@ -9,7 +9,13 @@
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "dist"
+    "rootDir": "./src",
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@assets/*": ["../assets/*"]
+    },
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src"]
 }

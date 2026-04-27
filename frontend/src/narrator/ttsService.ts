@@ -62,7 +62,9 @@ export async function convertMp3ToPcm16(
     const srcCeil = Math.min(srcFloor + 1, sourceData.length - 1);
     const fraction = srcIndex - srcFloor;
 
-    const sample = sourceData[srcFloor] * (1 - fraction) + sourceData[srcCeil] * fraction;
+    const a = sourceData[srcFloor] ?? 0;
+    const b = sourceData[srcCeil] ?? 0;
+    const sample = a * (1 - fraction) + b * fraction;
     const clamped = Math.max(-1, Math.min(1, sample));
     const int16 = Math.round(clamped * 32767);
     view.setInt16(i * 2, int16, true);
