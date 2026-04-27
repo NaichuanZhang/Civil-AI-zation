@@ -15,6 +15,7 @@ import claudeBack from '@assets/figure/claude/claude-backview_256.png';
 import claudeFront from '@assets/figure/claude/claude-frontview_256.png';
 import claudeLeft from '@assets/figure/claude/claude-leftview_256.png';
 import claudeRight from '@assets/figure/claude/claude-rightview_256.png';
+import chestUrl from '@assets/chest_256.png';
 
 const AGENT_FIGURES: Record<string, Record<string, string>> = {
   opus: { up: glmBack, down: glmFront, left: glmLeft, right: glmRight },
@@ -192,7 +193,7 @@ export function Grid({ agents, chests, currentTurnAgent, attackedAgents, gridSiz
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: debugMode
-              ? (chest && !agent ? 'rgba(42, 31, 10, 0.72)' : 'rgba(30, 41, 59, 0.45)')
+              ? 'rgba(30, 41, 59, 0.45)'
               : 'transparent',
             position: 'relative',
             boxSizing: 'border-box',
@@ -259,7 +260,21 @@ export function Grid({ agents, chests, currentTurnAgent, attackedAgents, gridSiz
               </div>
             );
           })() : chest ? (
-            <span style={{ fontSize: 'clamp(18px, 5vw, 24px)' }}>📦</span>
+            <img
+              src={chestUrl}
+              alt="chest"
+              style={{
+                position: 'absolute',
+                width: '140%',
+                height: 'auto',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                objectFit: 'contain',
+                pointerEvents: 'none',
+                zIndex: y,
+              }}
+            />
           ) : null}
           {debugMode && (
             <span
