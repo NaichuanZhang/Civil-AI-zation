@@ -13,9 +13,9 @@ export const getAgentIds = () => Object.keys(AGENT_STATS) as Array<keyof typeof 
  * Should match backend AGENT_CONFIG_MAP
  */
 export const AGENT_STATS = {
-  opus: { hp: 25, speed: 2 },
+  opus: { hp: 30, speed: 4 },
   sonnet: { hp: 20, speed: 3 },
-  haiku: { hp: 15, speed: 4 },
+  haiku: { hp: 15, speed: 2 },
 } as const;
 
 /**

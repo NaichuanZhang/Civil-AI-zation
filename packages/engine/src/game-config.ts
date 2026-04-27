@@ -48,8 +48,8 @@ export const AGENT_PERSONALITIES = {
 export const AGENT_CONFIG_MAP = {
   opus: {
     modelId: 'zai/glm-5-turbo',
-    speed: 2,
-    hp: 25,
+    speed: 4,
+    hp: 30,
     startPosition: { x: 0, y: 4 },
     startOrientation: 'up' as const,
     maxTokens: 1024,
@@ -64,7 +64,7 @@ export const AGENT_CONFIG_MAP = {
   },
   haiku: {
     modelId: 'openai/gpt-4o-mini',
-    speed: 4,
+    speed: 2,
     hp: 15,
     startPosition: { x: 2, y: 0 },
     startOrientation: 'down' as const,

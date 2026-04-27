@@ -5,10 +5,11 @@ import { AgentPanel } from './components/AgentPanel';
 import { LogViewer } from './components/LogViewer';
 import { GameControls, GameStartButton } from './components/GameControls';
 import logoUrl from '@assets/logo.png';
+import dashboardBgUrl from '@assets/dashboard-bg.png';
 import { Settings } from './components/Settings';
 import { Narrator } from './components/Narrator';
 import { NarratorProvider } from './contexts/NarratorContext';
-import { AGENT_INITIAL_HP, AGENT_STATS } from './config';
+import { AGENT_INITIAL_HP, AGENT_STATS, AGENT_NAMES, AGENT_COLORS } from './config';
 
 const AGENT_IDS = Object.keys(AGENT_STATS) as Array<keyof typeof AGENT_STATS>;
 
@@ -156,6 +157,76 @@ export function App() {
             }}
           >
             <LogViewer systemLogs={state.eventLog} debugMode={debugMode} />
+          </div>
+        )}
+
+        {/* Game end overlay */}
+        {state.status === 'completed' && state.result && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.45)',
+              pointerEvents: 'auto',
+            }}
+          >
+            <div
+              style={{
+                backgroundImage: `url(${dashboardBgUrl})`,
+                backgroundSize: '100% 100%',
+                backgroundPosition: 'center',
+                borderRadius: 16,
+                padding: '36px 48px',
+                textAlign: 'center',
+                minWidth: 320,
+                maxWidth: 440,
+              }}
+            >
+              <div style={{ fontSize: 28, fontWeight: 'bold', color: '#2c1810', marginBottom: 8 }}>
+                {state.result.winner ? 'Victory!' : 'Draw!'}
+              </div>
+              {state.result.winner && (
+                <div style={{
+                  fontSize: 20,
+                  color: AGENT_COLORS[state.result.winner] ?? '#2c1810',
+                  fontWeight: 'bold',
+                  marginBottom: 4,
+                }}>
+                  {AGENT_NAMES[state.result.winner] ?? state.result.winner}
+                </div>
+              )}
+              <div style={{ fontSize: 14, color: '#6b5344', marginBottom: 24 }}>
+                {state.result.type === 'elimination' ? 'Last one standing' : `After ${state.round} rounds`}
+              </div>
+              <button
+                type="button"
+                onClick={startGame}
+                style={{
+                  padding: '12px 32px',
+                  fontSize: 16,
+                  fontWeight: 'bold',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  backgroundColor: 'transparent',
+                  backgroundImage: `url(${dashboardBgUrl})`,
+                  backgroundSize: 'auto 100%',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  border: '2px solid rgba(68, 55, 40, 0.4)',
+                  color: '#2c1810',
+                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.35)',
+                  transition: 'filter 0.2s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.08)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
+              >
+                Play Again
+              </button>
+            </div>
           </div>
         )}
 
