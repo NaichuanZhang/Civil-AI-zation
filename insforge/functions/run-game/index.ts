@@ -36,7 +36,7 @@ var AGENT_CONFIG_MAP = {
     hp: 25,
     startPosition: { x: 0, y: 2 },
     startOrientation: "up",
-    maxTokens: 500
+    maxTokens: 1024
   },
   sonnet: {
     modelId: "openai/gpt-4o-mini",
@@ -44,15 +44,15 @@ var AGENT_CONFIG_MAP = {
     hp: 20,
     startPosition: { x: 2, y: 2 },
     startOrientation: "left",
-    maxTokens: 500
+    maxTokens: 1024
   },
   haiku: {
-    modelId: "anthropic/claude-haiku-4.5",
+    modelId: "openai/gpt-4o-mini",
     speed: 4,
     hp: 15,
     startPosition: { x: 1, y: 0 },
     startOrientation: "down",
-    maxTokens: 500
+    maxTokens: 1024
   }
 };
 var AGENT_INITIAL_HP = Object.fromEntries(
@@ -1017,8 +1017,7 @@ async function callLlm(client, params) {
       model: actualModel,
       messages: params.messages,
       temperature: params.temperature ?? 0.7,
-      max_tokens: params.maxTokens ?? 500,
-      thinking: { type: "enabled" }
+      max_tokens: params.maxTokens ?? 500
     };
     if (params.tools?.length) {
       body.tools = params.tools;
@@ -1095,9 +1094,10 @@ async function index_src_default(req) {
     return jsonResponse({ error: error.message }, 500);
   }
 }
+var ACTION_ORDER = { move: 0, turn: 1, attack: 2, rest: 3 };
 function parseActionsFromContent(content) {
   const actions = [];
-  const pattern = /\b(move|attack|turn|rest):(up|down|left|right|opus|sonnet|haiku)\b/gi;
+  const pattern = /\b(move|attack|turn):(up|down|left|right|opus|sonnet|haiku)\b/gi;
   let match;
   while ((match = pattern.exec(content)) !== null) {
     const type = match[1].toLowerCase();
@@ -1108,9 +1108,10 @@ function parseActionsFromContent(content) {
       actions.push({ type: "attack", target: param });
     } else if (type === "turn" && ["up", "down", "left", "right"].includes(param)) {
       actions.push({ type: "turn", direction: param });
-    } else if (type === "rest") {
-      actions.push({ type: "rest" });
     }
+  }
+  if (/\brest\b/i.test(content) && actions.length === 0) {
+    actions.push({ type: "rest" });
   }
   if (actions.length > 0) {
     console.log(`[parseActionsFromContent] Extracted ${actions.length} actions from content text`);
@@ -1238,8 +1239,14 @@ async function runGameLoop(client, gameId, initialState, config) {
           }
           reasoning = thinkingReasoning || toolReasoning || message?.content || "";
           const merged = [];
+          const seenTypes = /* @__PURE__ */ new Set();
           for (const tc of toolCalls) {
-            merged.push(...parseToolCall(tc));
+            for (const action of parseToolCall(tc)) {
+              if (!seenTypes.has(action.type)) {
+                seenTypes.add(action.type);
+                merged.push(action);
+              }
+            }
           }
           parsedActions = merged.length > 0 ? merged : [{ type: "rest" }];
         } else {
@@ -1249,7 +1256,6 @@ async function runGameLoop(client, gameId, initialState, config) {
       } catch (err) {
         console.error(`LLM call failed for ${turnAgent.agentId}:`, err);
       }
-      const ACTION_ORDER = { move: 0, turn: 1, attack: 2, rest: 3 };
       const orderedActions = [...parsedActions].sort(
         (a, b) => (ACTION_ORDER[a.type] ?? 99) - (ACTION_ORDER[b.type] ?? 99)
       );

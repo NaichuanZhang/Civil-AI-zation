@@ -52,7 +52,7 @@ export const AGENT_CONFIG_MAP = {
     hp: 25,
     startPosition: { x: 0, y: 2 },
     startOrientation: 'up' as const,
-    maxTokens: 500,
+    maxTokens: 1024,
   },
   sonnet: {
     modelId: 'openai/gpt-4o-mini',
@@ -60,7 +60,7 @@ export const AGENT_CONFIG_MAP = {
     hp: 20,
     startPosition: { x: 2, y: 2 },
     startOrientation: 'left' as const,
-    maxTokens: 500,
+    maxTokens: 1024,
   },
   haiku: {
     modelId: 'openai/gpt-4o-mini',
@@ -68,7 +68,7 @@ export const AGENT_CONFIG_MAP = {
     hp: 15,
     startPosition: { x: 1, y: 0 },
     startOrientation: 'down' as const,
-    maxTokens: 500,
+    maxTokens: 1024,
   },
 } as const;
 
