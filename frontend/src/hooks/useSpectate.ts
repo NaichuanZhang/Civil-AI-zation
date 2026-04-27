@@ -21,6 +21,7 @@ const INITIAL_STATE: GameUIState = {
   eventLog: [],
   result: null,
   currentTurnAgent: null,
+  attackedAgents: [],
 };
 
 const REPLAY_DELAYS: Record<number, number> = {
@@ -265,6 +266,7 @@ export function useSpectate(gameId?: string | null) {
             eventLog: historyEvents.map((e) => e.entry),
             result: null,
             currentTurnAgent: null,
+            attackedAgents: [],
           });
           setIsReplay(false);
           setIsLoading(false);
@@ -432,6 +434,7 @@ export function useSpectate(gameId?: string | null) {
               ? { winner: data.game.winner_agent_id, type: data.game.result }
               : null,
             currentTurnAgent: null,
+            attackedAgents: [],
           });
           setIsReplay(true);
           setIsLoading(false);
