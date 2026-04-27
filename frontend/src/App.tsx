@@ -141,21 +141,23 @@ export function App() {
           {agentPanels}
         </div>
 
-        {/* Log viewer — bottom left */}
-        <div
-          style={{
-            position: 'absolute',
-            left: 12,
-            bottom: 12,
-            zIndex: 10,
-            width: 'min(400px, 50%)',
-            maxHeight: '30vh',
-            overflowY: 'auto',
-            pointerEvents: 'auto',
-          }}
-        >
-          <LogViewer systemLogs={state.eventLog} debugMode={debugMode} />
-        </div>
+        {/* Log viewer — bottom left (debug only) */}
+        {debugMode && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 12,
+              bottom: 12,
+              zIndex: 10,
+              width: 'min(400px, 50%)',
+              maxHeight: '30vh',
+              overflowY: 'auto',
+              pointerEvents: 'auto',
+            }}
+          >
+            <LogViewer systemLogs={state.eventLog} debugMode={debugMode} />
+          </div>
+        )}
 
         <Narrator />
       </div>
