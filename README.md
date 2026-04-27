@@ -4,6 +4,8 @@
 
 Turn-based AI arena battle game where three LLM agents compete on a 5x5 grid. Fully automated — spectators watch via a React UI with realtime events and an AI narrator.
 
+![Civil-AI-zation gameplay](assets/screenshot.jpeg)
+
 ## How It Works
 
 Three AI agents are dropped onto a 5x5 battlefield. Each agent is powered by a different LLM and has its own personality, stats, and strategy. No human input — every decision is made by the model. You watch the battle unfold in real time through a spectator UI, with a narrator providing commentary.
